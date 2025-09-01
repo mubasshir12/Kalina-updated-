@@ -10,8 +10,8 @@ export const translateText = async (
     text: string,
     targetLang: string,
     sourceLang: string = 'auto'
-): Promise<string> => {
-    if (!text.trim()) return '';
+): Promise<{ translatedText: string, inputTokens: number, outputTokens: number }> => {
+    if (!text.trim()) return { translatedText: '', inputTokens: 0, outputTokens: 0 };
     const ai = getAiClient();
     
     let prompt: string;
@@ -29,12 +29,18 @@ export const translateText = async (
                 systemInstruction: translateSystemInstruction,
             }
         });
-        return response.text.trim();
+        
+        const translatedText = response.text.trim();
+        const inputTokens = response.usageMetadata?.promptTokenCount ?? 0;
+        const outputTokens = response.usageMetadata?.candidatesTokenCount ?? 0;
+
+        return { translatedText, inputTokens, outputTokens };
     } catch (error) {
         console.error("Error translating text:", error);
+        let errorMessage = "Error: Could not translate.";
         if (error instanceof Error) {
-            return `Error: Could not translate. ${error.message}`;
+            errorMessage = `Error: Could not translate. ${error.message}`;
         }
-        return "Error: Could not translate.";
+        return { translatedText: errorMessage, inputTokens: 0, outputTokens: 0 };
     }
 };

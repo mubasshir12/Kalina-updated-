@@ -1,5 +1,6 @@
+
 import React, { useState, useRef, useEffect } from 'react';
-import { Image as GalleryIcon, ChevronDown, BrainCircuit, KeyRound, BarChart3 } from 'lucide-react';
+import { Image as GalleryIcon, ChevronDown, BrainCircuit, KeyRound, BarChart3, Menu } from 'lucide-react';
 import { ChatModel, ModelInfo } from '../types';
 
 interface HeaderProps {
@@ -16,6 +17,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onShowGallery, onShowMemory, onShowUsage, isChatView, models, selectedChatModel, onSelectChatModel, apiKey, onOpenApiKeyModal }) => {
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false);
+  const [isMenuSheetOpen, setIsMenuSheetOpen] = useState(false);
   const modelSelectorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -29,6 +31,16 @@ const Header: React.FC<HeaderProps> = ({ onShowGallery, onShowMemory, onShowUsag
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+  
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+            setIsMenuSheetOpen(false);
+        }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const selectedModelObject = models.find(m => m.id === selectedChatModel) || models[0];
 
@@ -36,89 +48,108 @@ const Header: React.FC<HeaderProps> = ({ onShowGallery, onShowMemory, onShowUsag
       if (!key || key.length < 8) return 'Not set';
       return `${key.substring(0, 4)}...${key.substring(key.length - 4)}`;
   };
+  
+  const handleLinkClick = (action: () => void) => {
+    action();
+    setIsMenuSheetOpen(false);
+  };
 
   return (
-    <header className="bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 p-4 sticky top-0 z-10">
-      <div className="max-w-4xl mx-auto flex items-center justify-between relative">
-        <div className="flex items-center">
-            <h1 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Kalina AI</h1>
-        </div>
-        {isChatView && (
-            <div ref={modelSelectorRef} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                <button
-                    onClick={() => setIsModelSelectorOpen(prev => !prev)}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-gray-200/50 dark:bg-gray-800/50 rounded-xl text-gray-800 dark:text-gray-200 hover:bg-gray-300/50 dark:hover:bg-gray-700/70 transition-colors"
-                >
-                    <span className="font-semibold text-sm whitespace-nowrap">{selectedModelObject.name}</span>
-                    <ChevronDown className={`w-4 h-4 transition-transform ${isModelSelectorOpen ? 'rotate-180' : ''}`} />
-                </button>
-                {isModelSelectorOpen && (
-                    <div className="absolute top-full mt-2 w-64 bg-white dark:bg-[#2E2F33] border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden z-20">
-                        {models.map(model => (
+    <>
+        <header className="bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 p-4 sticky top-0 z-10">
+          <div className="max-w-4xl mx-auto flex items-center justify-between relative">
+            <div className="flex items-center">
+                <h1 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Kalina AI</h1>
+            </div>
+            {isChatView && (
+                <div ref={modelSelectorRef} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                    <button
+                        onClick={() => setIsModelSelectorOpen(prev => !prev)}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-gray-200/50 dark:bg-gray-800/50 rounded-xl text-gray-800 dark:text-gray-200 hover:bg-gray-300/50 dark:hover:bg-gray-700/70 transition-colors"
+                    >
+                        <span className="font-semibold text-sm whitespace-nowrap">{selectedModelObject.name}</span>
+                        <ChevronDown className={`w-4 h-4 transition-transform ${isModelSelectorOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {isModelSelectorOpen && (
+                        <div className="absolute top-full mt-2 w-64 bg-white dark:bg-[#2E2F33] border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden z-20">
+                            {models.map(model => (
+                                <button
+                                    key={model.id}
+                                    onClick={() => {
+                                        onSelectChatModel(model.id);
+                                        setIsModelSelectorOpen(false);
+                                    }}
+                                    className={`w-full text-left p-3 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors ${
+                                        selectedChatModel === model.id ? 'bg-gray-100 dark:bg-gray-700/70' : ''
+                                    }`}
+                                >
+                                    <p className="font-semibold text-sm">{model.name}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">{model.description}</p>
+                                </button>
+                            ))}
+                            <div className="border-t border-gray-200 dark:border-gray-600 my-1" />
                             <button
-                                key={model.id}
                                 onClick={() => {
-                                    onSelectChatModel(model.id);
+                                    onOpenApiKeyModal();
                                     setIsModelSelectorOpen(false);
                                 }}
-                                className={`w-full text-left p-3 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors ${
-                                    selectedChatModel === model.id ? 'bg-gray-100 dark:bg-gray-700/70' : ''
-                                }`}
+                                className="w-full text-left p-3 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors flex items-center gap-2"
                             >
-                                <p className="font-semibold text-sm">{model.name}</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">{model.description}</p>
+                                <KeyRound className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                <div>
+                                    <p className="font-semibold text-sm">Update API Key</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">{maskApiKey(apiKey)}</p>
+                                </div>
                             </button>
-                        ))}
-                        <div className="border-t border-gray-200 dark:border-gray-600 my-1" />
-                        <button
-                            onClick={() => {
-                                onOpenApiKeyModal();
-                                setIsModelSelectorOpen(false);
-                            }}
-                            className="w-full text-left p-3 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors flex items-center gap-2"
-                        >
-                            <KeyRound className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                            <div>
-                                <p className="font-semibold text-sm">Update API Key</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">{maskApiKey(apiKey)}</p>
-                            </div>
-                        </button>
-                    </div>
+                        </div>
+                    )}
+                </div>
+            )}
+            <div className="flex items-center gap-2">
+                {isChatView && (
+                    <button
+                      onClick={() => setIsMenuSheetOpen(true)}
+                      className="relative flex items-center justify-center h-9 w-9 overflow-hidden text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-200/50 dark:bg-gray-800/50 rounded-lg hover:bg-gray-300/50 dark:hover:bg-gray-700/70 transition-colors"
+                      aria-label="Open menu"
+                      title="Menu"
+                    >
+                        <Menu className="h-5 w-5" />
+                    </button>
                 )}
             </div>
-        )}
-        <div className="flex items-center gap-2">
-            {isChatView && (
-                <>
-                    <button
-                      onClick={onShowUsage}
-                      className="relative flex items-center justify-center h-9 w-9 overflow-hidden text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-200/50 dark:bg-gray-800/50 rounded-lg hover:bg-gray-300/50 dark:hover:bg-gray-700/70 transition-colors"
-                      aria-label="Open usage statistics"
-                      title="Usage Statistics"
-                    >
-                        <BarChart3 className="h-5 w-5" />
+          </div>
+        </header>
+
+        {/* Bottom Sheet for Menu */}
+        <div 
+            className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${isMenuSheetOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+            onClick={() => setIsMenuSheetOpen(false)}
+            aria-hidden="true"
+        />
+        <div
+            className={`fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#1e1f22] rounded-t-2xl shadow-2xl transition-transform duration-300 ease-in-out ${isMenuSheetOpen ? 'translate-y-0' : 'translate-y-full'}`}
+            role="dialog"
+            aria-modal="true"
+        >
+            <div className="p-4">
+                <div className="w-10 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full mx-auto mb-4" />
+                <nav className="space-y-1">
+                    <button onClick={() => handleLinkClick(onShowUsage)} className="w-full flex items-center gap-4 p-3 text-left text-base font-medium text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors">
+                        <BarChart3 className="h-6 w-6 text-gray-500 dark:text-gray-400" />
+                        <span>Usage Statistics</span>
                     </button>
-                    <button
-                      onClick={onShowMemory}
-                      className="relative flex items-center justify-center h-9 w-9 overflow-hidden text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-200/50 dark:bg-gray-800/50 rounded-lg hover:bg-gray-300/50 dark:hover:bg-gray-700/70 transition-colors"
-                      aria-label="Open memory management"
-                      title="Memory Management"
-                    >
-                        <BrainCircuit className="h-5 w-5" />
+                    <button onClick={() => handleLinkClick(onShowMemory)} className="w-full flex items-center gap-4 p-3 text-left text-base font-medium text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors">
+                        <BrainCircuit className="h-6 w-6 text-gray-500 dark:text-gray-400" />
+                        <span>Memory Management</span>
                     </button>
-                    <button
-                      onClick={onShowGallery}
-                      className="relative flex items-center justify-center h-9 w-9 overflow-hidden text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-200/50 dark:bg-gray-800/50 rounded-lg hover:bg-gray-300/50 dark:hover:bg-gray-700/70 transition-colors"
-                      aria-label="Open image gallery"
-                      title="Image Gallery"
-                    >
-                        <GalleryIcon className="h-5 w-5" />
+                    <button onClick={() => handleLinkClick(onShowGallery)} className="w-full flex items-center gap-4 p-3 text-left text-base font-medium text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors">
+                        <GalleryIcon className="h-6 w-6 text-gray-500 dark:text-gray-400" />
+                        <span>Image Gallery</span>
                     </button>
-                </>
-            )}
+                </nav>
+            </div>
         </div>
-      </div>
-    </header>
+    </>
   );
 };
 

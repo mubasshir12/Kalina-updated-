@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Conversation, LTM, Suggestion, View } from '../types';
 import ChatHistory from './ChatHistory';
@@ -19,6 +20,7 @@ interface ViewRendererProps {
     speakingMessageId: string | null;
     allGeneratedImages: string[];
     ltm: LTM;
+    translatorUsage: { input: number; output: number };
     handleRetry: () => void;
     handleEditMessage: (index: number, newContent: string) => void;
     handleUpdateMessageContent: (messageId: string, newContent: string) => void;
@@ -30,6 +32,7 @@ interface ViewRendererProps {
     setLtm: React.Dispatch<React.SetStateAction<LTM>>;
     scrollContainerRef: React.RefObject<HTMLDivElement>;
     onCloseTranslator: () => void;
+    onTranslationComplete: (tokens: { input: number; output: number }) => void;
 }
 
 const ViewRenderer: React.FC<ViewRendererProps> = ({
@@ -43,6 +46,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
     speakingMessageId,
     allGeneratedImages,
     ltm,
+    translatorUsage,
     handleRetry,
     handleEditMessage,
     handleUpdateMessageContent,
@@ -54,6 +58,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
     setLtm,
     scrollContainerRef,
     onCloseTranslator,
+    onTranslationComplete,
 }) => {
     const [activeMessageIndex, setActiveMessageIndex] = useState<number | null>(null);
 
@@ -126,9 +131,9 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
                 />
             );
         case 'translator':
-            return <TranslatorView onBack={onCloseTranslator} />;
+            return <TranslatorView onBack={onCloseTranslator} onTranslationComplete={onTranslationComplete} />;
         case 'usage':
-            return <UsageStatsView conversations={conversations} onBack={() => setCurrentView('chat')} />;
+            return <UsageStatsView conversations={conversations} onBack={() => setCurrentView('chat')} translatorUsage={translatorUsage} />;
         case 'chat':
         default:
             const showNavigators = !showWelcomeScreen && activeConversation && userMessageIndices.length > 1;

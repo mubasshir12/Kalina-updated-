@@ -36,6 +36,7 @@ const App: React.FC = () => {
     const [isStopConfirmOpen, setIsStopConfirmOpen] = useState(false);
     const [isModelSwitchModalOpen, setIsModelSwitchModalOpen] = useState(false);
     const [pendingPrompt, setPendingPrompt] = useState<{ prompt: string; image?: { base64: string; mimeType: string; }; file?: { base64: string; mimeType: string; name: string; } } | null>(null);
+    const [translatorUsage, setTranslatorUsage] = useState<{ input: number, output: number }>({ input: 0, output: 0 });
     
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -215,6 +216,13 @@ const App: React.FC = () => {
         }
     };
 
+    const handleTranslationComplete = useCallback((tokens: { input: number, output: number }) => {
+        setTranslatorUsage(prev => ({
+            input: prev.input + tokens.input,
+            output: prev.output + tokens.output,
+        }));
+    }, []);
+
     return (
         <div className="flex flex-col h-[100dvh] bg-gray-50 dark:bg-[#131314] text-gray-900 dark:text-white transition-colors duration-300">
             <Header
@@ -240,6 +248,7 @@ const App: React.FC = () => {
                 speakingMessageId={speakingMessageId}
                 allGeneratedImages={allGeneratedImages}
                 ltm={ltm}
+                translatorUsage={translatorUsage}
                 handleRetry={handleRetry}
                 handleEditMessage={handleEditMessage}
                 handleUpdateMessageContent={handleUpdateMessageContent}
@@ -254,6 +263,7 @@ const App: React.FC = () => {
                     setSelectedTool('smart');
                     setCurrentView('chat');
                 }}
+                onTranslationComplete={handleTranslationComplete}
             />
 
             {currentView === 'chat' && (
