@@ -41,6 +41,18 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onSetApiKey, onClose,
                 To use Kalina AI, please provide your Google Gemini API key. It will be stored locally in your browser.
             </p>
         </div>
+        
+        <div className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 aspect-video">
+            <iframe
+                className="w-full h-full"
+                src="https://www.youtube.com/embed/gdnA2uxLV0I?autoplay=1&mute=1&loop=1&playlist=gdnA2uxLV0I&controls=0&rel=0&iv_load_policy=3&modestbranding=1&playsinline=1"
+                title="API Key Instructions"
+                frameBorder="0"
+                allow="autoplay; encrypted-media;"
+            ></iframe>
+            <div className="absolute inset-0"></div>
+        </div>
+        
         <div className="relative">
             <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input

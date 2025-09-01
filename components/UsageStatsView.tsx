@@ -9,11 +9,13 @@ interface UsageStatsViewProps {
     onBack: () => void;
 }
 
-const StatCard: React.FC<{ icon: React.ElementType, label: string, value: string, colorClass: string, helpText: string }> = ({ icon: Icon, label, value, colorClass, helpText }) => (
+const StatCard: React.FC<{ icon?: React.ElementType, label: string, value: string, colorClass: string, helpText: string }> = ({ icon: Icon, label, value, colorClass, helpText }) => (
     <div className="bg-white dark:bg-[#2E2F33] p-3 sm:p-4 rounded-xl flex items-center gap-2 sm:gap-4 border border-gray-200 dark:border-gray-700/50">
-        <div className={`p-2 sm:p-3 rounded-full ${colorClass} flex-shrink-0`}>
-            <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-        </div>
+        {Icon && (
+            <div className={`p-2 sm:p-3 rounded-full ${colorClass} flex-shrink-0`}>
+                <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+            </div>
+        )}
         <div className="flex-1 overflow-hidden">
             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">{label}</p>
             <p className="text-lg sm:text-2xl font-bold text-gray-800 dark:text-gray-200">{value}</p>
@@ -102,9 +104,9 @@ const UsageStatsView: React.FC<UsageStatsViewProps> = ({ conversations, translat
                         </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                        <StatCard icon={LogIn} label="Input" value={formatNumber(grandTotal.input)} helpText="User prompt tokens" colorClass="bg-blue-500" />
-                        <StatCard icon={LogOut} label="Output" value={formatNumber(grandTotal.output)} helpText="Model response tokens" colorClass="bg-green-500" />
-                        <StatCard icon={Cpu} label="System" value={formatNumber(grandTotal.system)} helpText="Instructions & context" colorClass="bg-yellow-500" />
+                        <StatCard label="Input" value={formatNumber(grandTotal.input)} helpText="User prompt tokens" colorClass="bg-blue-500" />
+                        <StatCard label="Output" value={formatNumber(grandTotal.output)} helpText="Model response tokens" colorClass="bg-green-500" />
+                        <StatCard label="System" value={formatNumber(grandTotal.system)} helpText="Instructions & context" colorClass="bg-yellow-500" />
                     </div>
                 </div>
                 
