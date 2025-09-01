@@ -407,7 +407,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                   <button
                       onClick={isLoading ? onCancelStream : handleSend}
                       disabled={!isLoading && (!input.trim() && !image && !file)}
-                      className={`absolute right-2 bottom-2 flex items-center justify-center transition-all duration-300 ${
+                      className={`absolute right-2 bottom-3 flex items-center justify-center transition-all duration-300 ${
                           isLoading 
                               ? 'bg-red-600 hover:bg-red-500 h-10 rounded-full' 
                               : 'bg-indigo-600 hover:bg-indigo-500 text-white disabled:bg-gray-400 dark:disabled:bg-gray-500 disabled:cursor-not-allowed w-10 h-10 rounded-full'

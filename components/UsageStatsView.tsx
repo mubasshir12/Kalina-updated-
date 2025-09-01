@@ -14,7 +14,7 @@ const StatCard: React.FC<{ icon: React.ElementType, label: string, value: string
         <div className={`p-2 sm:p-3 rounded-full ${colorClass} flex-shrink-0`}>
             <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
         </div>
-        <div className="overflow-hidden">
+        <div className="flex-1 overflow-hidden">
             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">{label}</p>
             <p className="text-lg sm:text-2xl font-bold text-gray-800 dark:text-gray-200">{value}</p>
             <p className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-500 truncate">{helpText}</p>
