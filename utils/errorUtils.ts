@@ -5,7 +5,7 @@ export const getFriendlyErrorMessage = (error: any): AppError => {
 
     if (message.includes('API key not valid') || message.toLowerCase().includes('permission denied') || message.includes('API_KEY')) {
         return { 
-            message: 'Your API key is invalid or not configured correctly. Please check your .env file.', 
+            message: 'Your API key is invalid or not configured correctly. Please open the model selector to update your key.', 
         };
     }
     if (message.includes('429')) {
