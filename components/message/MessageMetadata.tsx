@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { ChatModel, ModelInfo } from '../../types';
 import { BrainCircuit, Zap } from 'lucide-react';
@@ -88,7 +89,7 @@ const MessageMetadata: React.FC<MessageMetadataProps> = ({ modelUsed, inputToken
             <div className="flex items-center gap-x-4 flex-wrap">
                 {modelUsed && <ModelInfoDisplay modelId={modelUsed} />}
                 {generationTime && generationTime > 0 && (
-                  <Tooltip content="Total time from request to full response." position="bottom" wrap={false}>
+                  <Tooltip content={<span>Total time from request to<br />full response.</span>} position="bottom" wrap={false}>
                       <span className="cursor-help">{`${(generationTime / 1000).toFixed(1)}s`}</span>
                   </Tooltip>
                 )}
