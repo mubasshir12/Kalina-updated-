@@ -3,7 +3,7 @@ import React from 'react';
 export type ChatModel = 'gemini-2.5-flash' | 'gemini-2.5-pro';
 export type ControlState = 'auto' | 'on' | 'off';
 export type Tool = 'smart' | 'webSearch' | 'thinking' | 'imageGeneration' | 'translator' | 'urlReader';
-export type View = 'chat' | 'gallery' | 'memory' | 'translator' | 'usage';
+export type View = 'chat' | 'gallery' | 'memory' | 'translator' | 'usage' | 'transparency';
 
 export type MessageRole = 'user' | 'model';
 
@@ -40,12 +40,21 @@ export interface ChatMessage {
       base64: string;
       mimeType: string;
       name: string;
+      size: number;
   };
+  hasImage?: boolean;
+  fileInfo?: {
+      name: string;
+      size: number;
+      mimeType: string;
+  };
+  modelUsed?: ChatModel;
   sources?: GroundingChunk[];
   thoughts?: ThoughtStep[];
   searchPlan?: ThoughtStep[];
   thinkingDuration?: number;
   isAnalyzingImage?: boolean;
+  isAnalyzingFile?: boolean;
   isGeneratingImage?: boolean;
   isEditingImage?: boolean;
   generatedImagesBase64?: string[];

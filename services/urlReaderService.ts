@@ -1,5 +1,6 @@
 import { getAiClient } from "./aiClient";
 import { Type } from "@google/genai";
+import { logDev } from "./loggingService";
 
 // TypeScript declaration for the Readability class loaded from the script tag in index.html
 declare var Readability: any;
@@ -58,6 +59,7 @@ export const fetchAndParseUrlContent = async (url: string): Promise<string> => {
 
     } catch (error) {
         console.error("Error in fetchAndParseUrlContent:", error);
+        logDev('error', 'Error in fetchAndParseUrlContent:', error);
 
         // If the fetch call itself fails (e.g., network error, DNS failure, or the proxy is down),
         // it will throw a TypeError with the message "Failed to fetch". We provide a more user-friendly message for this case.

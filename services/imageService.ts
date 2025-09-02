@@ -1,18 +1,8 @@
 import { Modality, Type } from "@google/genai";
 import { getAiClient } from "./aiClient";
+import { logDev } from "./loggingService";
 
-const generateImagePromptsSystemInstruction = `You are a creative assistant for image generation. Based on the user's prompt, generate 5 alternative or more detailed prompts. The prompts should be creative, diverse, and inspiring, exploring different artistic styles, subjects, or compositions.
-Respond ONLY with a valid JSON object matching this schema:
-{
-  "type": "object",
-  "properties": {
-    "suggestions": {
-      "type": "array",
-      "items": { "type": "string" }
-    }
-  },
-  "required": ["suggestions"]
-}`;
+const generateImagePromptsSystemInstruction = `You are a creative image prompt assistant. Based on the user's prompt, generate 5 diverse and detailed alternative prompts exploring different styles and subjects. Respond ONLY with a JSON object: { "suggestions": ["prompt1", "prompt2", ...] }`;
 
 export const generateImagePromptSuggestions = async (basePrompt: string): Promise<string[]> => {
     const ai = getAiClient();
@@ -40,6 +30,7 @@ export const generateImagePromptSuggestions = async (basePrompt: string): Promis
         return result.suggestions || [];
     } catch (error) {
         console.error("Error generating image prompt suggestions:", error);
+        logDev('error', 'Error in generateImagePromptSuggestions:', error);
         throw error;
     }
 };
@@ -66,6 +57,7 @@ export const generateImage = async (prompt: string, numberOfImages: number, aspe
         }
     } catch (error) {
         console.error("Error generating image:", error);
+        logDev('error', 'Error in generateImage:', error);
         throw error;
     }
 };
@@ -123,6 +115,7 @@ export const editImage = async (prompt: string, image: { base64: string; mimeTyp
 
     } catch (error) {
         console.error("Error editing image:", error);
+        logDev('error', 'Error in editImage:', error);
         throw error;
     }
 };

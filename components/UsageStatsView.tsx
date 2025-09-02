@@ -1,7 +1,8 @@
 
+
 import React, { useMemo } from 'react';
 import { Conversation } from '../types';
-import { ArrowLeft, MessageSquareText, LogIn, LogOut, Cpu, Languages } from 'lucide-react';
+import { ArrowLeft, MessageSquareText, LogIn, LogOut, Cpu, Languages, Info } from 'lucide-react';
 
 interface UsageStatsViewProps {
     conversations: Conversation[];
@@ -86,6 +87,16 @@ const UsageStatsView: React.FC<UsageStatsViewProps> = ({ conversations, translat
                         <ArrowLeft className="h-6 w-6" />
                     </button>
                     <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-200">Usage Dashboard</h1>
+                </div>
+
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 p-4 rounded-xl mb-6 flex items-start gap-4">
+                    <Info className="h-6 w-6 text-blue-500 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                        <h3 className="font-semibold text-blue-800 dark:text-blue-200">What are Tokens?</h3>
+                        <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                            Tokens are the units Google uses to measure AI model usage. Think of them as pieces of words. Both your prompts (input) and the AI's answers (output) consume tokens. This dashboard helps you track your consumption.
+                        </p>
+                    </div>
                 </div>
 
                 <div className="bg-white dark:bg-[#1e1f22] rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 mb-6 p-6">

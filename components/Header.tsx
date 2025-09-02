@@ -1,21 +1,28 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Image as GalleryIcon, ChevronDown, BrainCircuit, KeyRound, BarChart3, Menu } from 'lucide-react';
+import { Image as GalleryIcon, ChevronDown, BrainCircuit, KeyRound, BarChart3, Menu, Info, Monitor, SlidersHorizontal } from 'lucide-react';
 import { ChatModel, ModelInfo } from '../types';
 
 interface HeaderProps {
     onShowGallery: () => void;
     onShowMemory: () => void;
     onShowUsage: () => void;
+    onShowTransparency: () => void;
     isChatView: boolean;
     models: ModelInfo[];
     selectedChatModel: ChatModel;
     onSelectChatModel: (model: ChatModel) => void;
     apiKey: string | null;
     onOpenApiKeyModal: () => void;
+    consoleMode: 'auto' | 'manual';
+    onSetConsoleMode: (mode: 'auto' | 'manual') => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onShowGallery, onShowMemory, onShowUsage, isChatView, models, selectedChatModel, onSelectChatModel, apiKey, onOpenApiKeyModal }) => {
+const Header: React.FC<HeaderProps> = ({ 
+    onShowGallery, onShowMemory, onShowUsage, onShowTransparency, isChatView, 
+    models, selectedChatModel, onSelectChatModel, apiKey, onOpenApiKeyModal,
+    consoleMode, onSetConsoleMode 
+}) => {
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false);
   const [isMenuSheetOpen, setIsMenuSheetOpen] = useState(false);
   const modelSelectorRef = useRef<HTMLDivElement>(null);
@@ -56,7 +63,7 @@ const Header: React.FC<HeaderProps> = ({ onShowGallery, onShowMemory, onShowUsag
 
   return (
     <>
-        <header className="bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 p-4 sticky top-0 z-10">
+        <header className="bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 p-4 sticky top-0 z-30">
           <div className="max-w-4xl mx-auto flex items-center justify-between relative">
             <div className="flex items-center">
                 <h1 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Kalina AI</h1>
@@ -145,6 +152,35 @@ const Header: React.FC<HeaderProps> = ({ onShowGallery, onShowMemory, onShowUsag
                     <button onClick={() => handleLinkClick(onShowGallery)} className="w-full flex items-center gap-4 p-3 text-left text-base font-medium text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors">
                         <GalleryIcon className="h-6 w-6 text-gray-500 dark:text-gray-400" />
                         <span>Image Gallery</span>
+                    </button>
+                    <div className="border-t border-gray-200 dark:border-gray-600 my-1" />
+                    <div className="p-3">
+                        <div className="flex items-center gap-4 text-gray-700 dark:text-gray-300">
+                             <SlidersHorizontal className="h-6 w-6 text-gray-500 dark:text-gray-400" />
+                             <span className="text-base font-medium">Developer Settings</span>
+                        </div>
+                        <div className="mt-2 pl-10">
+                            <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Console Visibility</label>
+                            <div className="flex gap-2 mt-1">
+                                <button onClick={() => onSetConsoleMode('auto')} className={`px-4 py-1.5 text-sm rounded-lg transition-colors ${consoleMode === 'auto' ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'}`}>
+                                    Automatic
+                                </button>
+                                <button onClick={() => onSetConsoleMode('manual')} className={`px-4 py-1.5 text-sm rounded-lg transition-colors ${consoleMode === 'manual' ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'}`}>
+                                    Manual
+                                </button>
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-gray-500 mt-1 pl-1">
+                                {consoleMode === 'auto' 
+                                    ? "Button appears on error. Panel opens on first error."
+                                    : "Button is always visible for manual access."
+                                }
+                            </p>
+                        </div>
+                    </div>
+                    <div className="border-t border-gray-200 dark:border-gray-600 my-1" />
+                    <button onClick={() => handleLinkClick(onShowTransparency)} className="w-full flex items-center gap-4 p-3 text-left text-base font-medium text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors">
+                        <Info className="h-6 w-6 text-gray-500 dark:text-gray-400" />
+                        <span>Transparency & About</span>
                     </button>
                 </nav>
             </div>

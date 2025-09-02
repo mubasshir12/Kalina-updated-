@@ -18,13 +18,14 @@ interface ChatHistoryProps {
 
 const ChatHistory: React.FC<ChatHistoryProps> = ({ messages, isLoading, isThinking, isSearchingWeb, onRetry, onEditMessage, onUpdateMessageContent, speakingMessageId, onToggleAudio, onCancelStream, scrollContainerRef }) => {
   const [isLockedToBottom, setIsLockedToBottom] = useState(true);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   // Effect to auto-scroll when new messages stream in, if the user is already at the bottom.
   useEffect(() => {
-    if (isLockedToBottom && scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    if (isLockedToBottom && bottomRef.current) {
+        bottomRef.current.scrollIntoView();
     }
-  }, [messages, isLoading, isThinking, isSearchingWeb, isLockedToBottom, scrollContainerRef]);
+  }, [messages, isLoading, isThinking, isSearchingWeb, isLockedToBottom]);
 
   // Effect to track user scrolling and determine if we should lock to the bottom.
   useEffect(() => {
@@ -70,7 +71,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ messages, isLoading, isThinki
           />
         );
       })}
-      <div className="h-2" />
+      <div className="h-1" ref={bottomRef} />
     </div>
   );
 };

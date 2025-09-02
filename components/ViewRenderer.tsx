@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Conversation, LTM, Suggestion, View } from '../types';
 import ChatHistory from './ChatHistory';
@@ -8,6 +9,7 @@ import MemoryManagement from './MemoryManagement';
 import ConversationNavigator from './ConversationNavigator';
 import TranslatorView from './Translator';
 import UsageStatsView from './UsageStatsView';
+import TransparencyView from './TransparencyView';
 
 interface ViewRendererProps {
     currentView: View;
@@ -134,34 +136,38 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
             return <TranslatorView onBack={onCloseTranslator} onTranslationComplete={onTranslationComplete} />;
         case 'usage':
             return <UsageStatsView conversations={conversations} onBack={() => setCurrentView('chat')} translatorUsage={translatorUsage} />;
+        case 'transparency':
+            return <TransparencyView onBack={() => setCurrentView('chat')} />;
         case 'chat':
         default:
             const showNavigators = !showWelcomeScreen && activeConversation && userMessageIndices.length > 1;
             return (
                 <main className="flex-1 flex flex-col overflow-hidden">
                     <div className="flex-1 relative">
-                        <div ref={scrollContainerRef} className="absolute inset-0 overflow-y-auto p-4 md:p-6">
-                            <div className="max-w-4xl mx-auto h-full">
-                                {showWelcomeScreen ? (
-                                    <WelcomeScreen onSelectSuggestion={handleSelectSuggestion} />
-                                ) : (
-                                    activeConversation && (
-                                        <ChatHistory
-                                            messages={activeConversation.messages}
-                                            isLoading={isLoading}
-                                            isThinking={isThinking}
-                                            isSearchingWeb={isSearchingWeb}
-                                            onRetry={handleRetry}
-                                            onEditMessage={handleEditMessage}
-                                            onUpdateMessageContent={handleUpdateMessageContent}
-                                            speakingMessageId={speakingMessageId}
-                                            onToggleAudio={handleToggleAudio}
-                                            onCancelStream={handleCancelStream}
-                                            scrollContainerRef={scrollContainerRef}
-                                        />
-                                    )
-                                )}
-                            </div>
+                        <div ref={scrollContainerRef} className="absolute inset-0 overflow-y-auto">
+                           {showWelcomeScreen ? (
+                                <WelcomeScreen onSelectSuggestion={handleSelectSuggestion} />
+                            ) : (
+                                <div className="p-4 md:p-6">
+                                    <div className="max-w-4xl mx-auto h-full">
+                                        {activeConversation && (
+                                            <ChatHistory
+                                                messages={activeConversation.messages}
+                                                isLoading={isLoading}
+                                                isThinking={isThinking}
+                                                isSearchingWeb={isSearchingWeb}
+                                                onRetry={handleRetry}
+                                                onEditMessage={handleEditMessage}
+                                                onUpdateMessageContent={handleUpdateMessageContent}
+                                                speakingMessageId={speakingMessageId}
+                                                onToggleAudio={handleToggleAudio}
+                                                onCancelStream={handleCancelStream}
+                                                scrollContainerRef={scrollContainerRef}
+                                            />
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         {showNavigators && (
                             <ConversationNavigator

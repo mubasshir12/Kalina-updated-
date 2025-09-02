@@ -16,6 +16,11 @@ import ConfirmationModal from './components/ConfirmationModal';
 import ImagePromptSuggestions from './components/ImagePromptSuggestions';
 import ModelSwitchModal from './components/ModelSwitchModal';
 import { codeKeywords } from './utils/codeKeywords';
+import DevConsoleButton from './components/DevConsoleButton';
+import DevConsole from './components/DevConsole';
+import { setupGlobalErrorHandlers, logDev, subscribeToLogs, DevLog } from './services/loggingService';
+import { explainError } from './services/debugService';
+import { IS_DEV_CONSOLE_ENABLED } from './config';
 
 const models: ModelInfo[] = [
     { id: 'gemini-2.5-flash', name: 'Kalina 2.5 Flash', description: 'Optimized for speed and efficiency.' },
@@ -30,14 +35,39 @@ const App: React.FC = () => {
     const [isImageOptionsOpen, setIsImageOptionsOpen] = useState(false);
     const [imageGenerationPrompt, setImageGenerationPrompt] = useState('');
     const [activeSuggestion, setActiveSuggestion] = useState<Suggestion | null>(null);
-    const [allGeneratedImages, setAllGeneratedImages] = useState<string[]>([]);
+    const [allGeneratedImages, setAllGeneratedImages] = useState<string[]>(() => {
+        try {
+            const storedImages = localStorage.getItem('kalina_generated_images');
+            return storedImages ? JSON.parse(storedImages) : [];
+        } catch (e) {
+            console.error("Failed to parse generated images from localStorage", e);
+            logDev('error', "Failed to parse generated images from localStorage", e);
+            return [];
+        }
+    });
     const [currentView, setCurrentView] = useState<View>('chat');
     const [isHistorySheetOpen, setIsHistorySheetOpen] = useState(false);
     const [isStopConfirmOpen, setIsStopConfirmOpen] = useState(false);
     const [isModelSwitchModalOpen, setIsModelSwitchModalOpen] = useState(false);
-    const [pendingPrompt, setPendingPrompt] = useState<{ prompt: string; image?: { base64: string; mimeType: string; }; file?: { base64: string; mimeType: string; name: string; } } | null>(null);
-    const [translatorUsage, setTranslatorUsage] = useState<{ input: number, output: number }>({ input: 0, output: 0 });
+    const [pendingPrompt, setPendingPrompt] = useState<{ prompt: string; image?: { base64: string; mimeType: string; }; file?: { base64: string; mimeType: string; name: string; size: number; } } | null>(null);
+    const [translatorUsage, setTranslatorUsage] = useState<{ input: number, output: number }>(() => {
+        try {
+            const storedUsage = localStorage.getItem('kalina_translator_usage');
+            return storedUsage ? JSON.parse(storedUsage) : { input: 0, output: 0 };
+        } catch (e) {
+            console.error("Failed to parse translator usage from localStorage", e);
+            logDev('error', "Failed to parse translator usage from localStorage", e);
+            return { input: 0, output: 0 };
+        }
+    });
     
+    // Dev Console State
+    const [consoleMode, setConsoleMode] = useState<'auto' | 'manual'>(() => {
+        return (localStorage.getItem('kalina_console_mode') as 'auto' | 'manual') || 'auto';
+    });
+    const [isConsoleOpen, setIsConsoleOpen] = useState(false);
+    const [errorCount, setErrorCount] = useState(0);
+
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     const conversationManager = useConversations();
@@ -73,6 +103,47 @@ const App: React.FC = () => {
     const showWelcomeScreen = !activeConversation || activeConversation.messages.length === 0;
 
     useEffect(() => {
+        try {
+            localStorage.setItem('kalina_generated_images', JSON.stringify(allGeneratedImages));
+        } catch (e) {
+            console.error("Failed to save generated images to localStorage", e);
+            logDev('error', "Failed to save generated images to localStorage", e);
+        }
+    }, [allGeneratedImages]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('kalina_translator_usage', JSON.stringify(translatorUsage));
+        } catch (e) {
+            console.error("Failed to save translator usage to localStorage", e);
+            logDev('error', "Failed to save translator usage to localStorage", e);
+        }
+    }, [translatorUsage]);
+
+    // Console Mode Persistence
+    useEffect(() => {
+        localStorage.setItem('kalina_console_mode', consoleMode);
+    }, [consoleMode]);
+    
+    // Console Auto-Open Logic
+    useEffect(() => {
+        if (!IS_DEV_CONSOLE_ENABLED) return;
+        const unsubscribe = subscribeToLogs((logs) => {
+            const newErrorCount = logs.filter(l => l.level === 'error').length;
+            if (consoleMode === 'auto' && newErrorCount > errorCount) {
+                setIsConsoleOpen(true);
+            }
+            setErrorCount(newErrorCount);
+        });
+        return unsubscribe;
+    }, [consoleMode, errorCount]);
+
+
+    useEffect(() => {
+        if (IS_DEV_CONSOLE_ENABLED) {
+            setupGlobalErrorHandlers();
+        }
+        
         const storedApiKey = localStorage.getItem('kalina_api_key');
         if (storedApiKey) {
             try {
@@ -80,6 +151,7 @@ const App: React.FC = () => {
                 setApiKey(storedApiKey);
             } catch (e) {
                 console.error("Failed to initialize with stored API key:", e);
+                logDev('error', "Failed to initialize with stored API key:", e);
                 localStorage.removeItem('kalina_api_key');
                 setIsApiKeyModalOpen(true);
             }
@@ -125,6 +197,7 @@ const App: React.FC = () => {
             setIsApiKeyModalOpen(false);
         } catch (e) {
             console.error("Failed to set API key:", e);
+            logDev('error', "Failed to set API key:", e);
         }
     };
 
@@ -134,26 +207,18 @@ const App: React.FC = () => {
         return codeKeywords.some(keyword => lowerText.includes(keyword.toLowerCase()));
     };
 
-    const executeSendMessage = (prompt: string, image?: { base64: string; mimeType: string; }, file?: { base64: string; mimeType: string; name: string; }, overrideModel?: ChatModel) => {
-        handleSendMessage(prompt, image, file, overrideModel);
-        setTimeout(() => {
-            if (scrollContainerRef.current) {
-                scrollContainerRef.current.scrollTo({
-                    top: scrollContainerRef.current.scrollHeight,
-                    behavior: 'smooth',
-                });
-            }
-        }, 100);
-    };
+    const executeSendMessage = useCallback((prompt: string, image?: { base64: string; mimeType: string; }, file?: { base64: string; mimeType: string; name: string; size: number; }, overrideModel?: ChatModel, isRetry = false) => {
+        handleSendMessage(prompt, image, file, overrideModel, isRetry);
+    }, [handleSendMessage]);
 
-    const handleSendMessageWrapper = (prompt: string, image?: { base64: string; mimeType: string; }, file?: { base64: string; mimeType: string; name: string; }) => {
-        if (selectedChatModel !== 'gemini-2.5-pro' && isCodeRelated(prompt)) {
+    const handleSendMessageWrapper = useCallback((prompt: string, image?: { base64: string; mimeType: string; }, file?: { base64: string; mimeType: string; name: string; size: number; }, isRetry = false) => {
+        if (selectedChatModel !== 'gemini-2.5-pro' && isCodeRelated(prompt) && !isRetry) {
             setPendingPrompt({ prompt, image, file });
             setIsModelSwitchModalOpen(true);
         } else {
-            executeSendMessage(prompt, image, file);
+            executeSendMessage(prompt, image, file, undefined, isRetry);
         }
-    };
+    }, [selectedChatModel, executeSendMessage]);
 
     const handleConfirmSwitch = () => {
         if (!pendingPrompt) return;
@@ -185,10 +250,10 @@ const App: React.FC = () => {
             const lastUserMessage = activeConversation.messages[lastModelMessageIndex - 1];
             if (lastUserMessage?.role === 'user') {
                 conversationManager.updateConversationMessages(activeConversation.id, prev => prev.slice(0, lastModelMessageIndex));
-                handleSendMessageWrapper(lastUserMessage.content, lastUserMessage.image, lastUserMessage.file);
+                handleSendMessageWrapper(lastUserMessage.content, lastUserMessage.image, lastUserMessage.file, true);
             }
         }
-    }, [activeConversation, conversationManager]);
+    }, [activeConversation, conversationManager, handleSendMessageWrapper]);
 
     const handleEditMessage = (index: number, newContent: string) => {
         if (!activeConversation) return;
@@ -223,18 +288,36 @@ const App: React.FC = () => {
         }));
     }, []);
 
+    const handleAskAiForErrorFix = useCallback(async (log: DevLog) => {
+        if (!apiKey) {
+            logDev('warn', 'Cannot ask AI for fix: API key not set.');
+            return;
+        }
+        logDev('info', 'Asking AI to debug error...', log.message);
+        try {
+            const explanation = await explainError(log);
+            logDev('ai-response', explanation);
+        } catch (e) {
+            logDev('error', 'Failed to get explanation from AI', e);
+        }
+    }, [apiKey]);
+
+
     return (
         <div className="flex flex-col h-[100dvh] bg-gray-50 dark:bg-[#131314] text-gray-900 dark:text-white transition-colors duration-300">
             <Header
                 onShowGallery={() => setCurrentView('gallery')}
                 onShowMemory={() => setCurrentView('memory')}
                 onShowUsage={() => setCurrentView('usage')}
+                onShowTransparency={() => setCurrentView('transparency')}
                 isChatView={currentView === 'chat'}
                 models={models}
                 selectedChatModel={selectedChatModel}
                 onSelectChatModel={setSelectedChatModel}
                 apiKey={apiKey}
                 onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
+                consoleMode={consoleMode}
+                onSetConsoleMode={setConsoleMode}
             />
 
             <ViewRenderer
@@ -267,7 +350,7 @@ const App: React.FC = () => {
             />
 
             {currentView === 'chat' && (
-                <div className="p-4 md:p-6 bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700">
+                <div className="relative z-20 p-4 md:p-6 bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700">
                     <div className="max-w-4xl mx-auto relative">
                         {selectedTool === 'imageGeneration' && <ImagePromptSuggestions onSelectPrompt={(p) => handleSendMessageWrapper(p)} />}
                         
@@ -330,6 +413,20 @@ const App: React.FC = () => {
                 confirmButtonText="Stop"
                 confirmButtonVariant="danger"
             />
+
+            {IS_DEV_CONSOLE_ENABLED && (
+                <>
+                    <DevConsoleButton 
+                        onClick={() => setIsConsoleOpen(true)}
+                        isVisible={consoleMode === 'manual' || (consoleMode === 'auto' && errorCount > 0)}
+                    />
+                    <DevConsole 
+                        isOpen={isConsoleOpen} 
+                        onClose={() => setIsConsoleOpen(false)}
+                        onAskAi={handleAskAiForErrorFix}
+                    />
+                </>
+            )}
         </div>
     );
 };

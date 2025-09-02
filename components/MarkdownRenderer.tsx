@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { GroundingChunk } from '../types';
 import CodeBlock from './CodeBlock';
@@ -204,7 +205,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, sources, o
             elements.push(<p key={index}>{parseInline(line, sources)}</p>);
         } else if (elements.length > 0 && lines[index-1]?.trim() !== '') {
             // Add a spacer for intentional line breaks, but not for multiple empty lines
-            elements.push(<div key={`spacer-${index}`} className="h-4"></div>);
+            elements.push(<div key={`spacer-${index}`} className="h-1"></div>);
         }
     });
 

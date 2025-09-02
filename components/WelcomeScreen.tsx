@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Wand2, Lightbulb, BarChart3, Code2, BugPlay, DatabaseZap, HelpCircle } from 'lucide-react';
 import { Suggestion } from '../types';
+import ParticleUniverse from './ParticleUniverse';
 
 interface WelcomeScreenProps {
   onSelectSuggestion: (suggestion: Suggestion) => void;
@@ -37,7 +38,7 @@ const allSuggestions: Suggestion[] = [
         icon: <BugPlay className="h-5 w-5 text-red-500" />,
         prompt: "My React component isn't updating its state correctly. Here's the code, can you help me find the bug?"
     },
-    {
+    { 
         text: "Explain a concept",
         icon: <HelpCircle className="h-5 w-5 text-teal-500" />,
         prompt: "Explain the concept of 'async/await' in JavaScript with a code example."
@@ -63,32 +64,35 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectSuggestion }) => 
     }, [refreshSuggestions]);
 
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center px-4">
-      <div className="mb-12">
-        <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-800 dark:text-gray-200">
-            What can I help with?
-        </h1>
-      </div>
-      <div className="flex flex-wrap justify-center items-center gap-3 w-full max-w-3xl">
-        {suggestions.map((suggestion, index) => (
+    <div className="relative flex flex-col items-center justify-center h-full text-center overflow-hidden">
+      <ParticleUniverse />
+      <div className="relative z-10 w-full px-4">
+          <div className="mb-12">
+            <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-800 dark:text-gray-200">
+                What can I help with?
+            </h1>
+          </div>
+          <div className="flex flex-wrap justify-center items-center gap-3 w-full max-w-3xl mx-auto">
+            {suggestions.map((suggestion, index) => (
+                <button
+                    key={index}
+                    onClick={() => onSelectSuggestion(suggestion)}
+                    className="flex items-center gap-2.5 bg-white/70 dark:bg-[#1e1f22]/70 backdrop-blur-sm p-3 pl-4 pr-5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors duration-200 border border-gray-200 dark:border-gray-700 shadow-sm"
+                    aria-label={suggestion.text}
+                >
+                    {suggestion.icon}
+                    <span className="font-medium text-gray-700 dark:text-gray-300">{suggestion.text}</span>
+                </button>
+            ))}
             <button
-                key={index}
-                onClick={() => onSelectSuggestion(suggestion)}
-                className="flex items-center gap-2.5 bg-white dark:bg-[#1e1f22] p-3 pl-4 pr-5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors duration-200 border border-gray-200 dark:border-gray-700 shadow-sm"
-                aria-label={suggestion.text}
+              onClick={refreshSuggestions}
+              className="bg-white/70 dark:bg-[#1e1f22]/70 backdrop-blur-sm p-3 px-5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors duration-200 border border-gray-200 dark:border-gray-700 shadow-sm"
+              aria-label="Show more suggestions"
             >
-                {suggestion.icon}
-                <span className="font-medium text-gray-700 dark:text-gray-300">{suggestion.text}</span>
+                <span className="font-medium text-gray-700 dark:text-gray-300">More</span>
             </button>
-        ))}
-        <button
-          onClick={refreshSuggestions}
-          className="bg-white dark:bg-[#1e1f22] p-3 px-5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors duration-200 border border-gray-200 dark:border-gray-700 shadow-sm"
-          aria-label="Show more suggestions"
-        >
-            <span className="font-medium text-gray-700 dark:text-gray-300">More</span>
-        </button>
-      </div>
+          </div>
+        </div>
     </div>
   );
 };

@@ -1,10 +1,11 @@
+
 import React, { useState, KeyboardEvent, useRef, ChangeEvent, useEffect } from 'react';
 import { Suggestion, Tool } from '../types';
 import { Sparkles, ChevronDown, X, Paperclip, ArrowUp, Globe, BrainCircuit, Image, History, Expand, File, Presentation, FileText, Camera, Languages, Link } from 'lucide-react';
 import ImageModal from './ImageModal';
 
 interface ChatInputProps {
-  onSendMessage: (message: string, image?: { base64: string; mimeType: string; }, file?: { base64: string; mimeType: string; name: string; }) => void;
+  onSendMessage: (message: string, image?: { base64: string; mimeType: string; }, file?: { base64: string; mimeType: string; name: string; size: number; }) => void;
   isLoading: boolean;
   elapsedTime: number;
   selectedTool: Tool;
@@ -58,7 +59,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
 }) => {
   const [input, setInput] = useState('');
   const [image, setImage] = useState<{ base64: string; mimeType: string; } | null>(null);
-  const [file, setFile] = useState<{ base64: string; mimeType: string; name: string; } | null>(null);
+  const [file, setFile] = useState<{ base64: string; mimeType: string; name: string; size: number; } | null>(null);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
@@ -141,6 +142,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 base64: base64String,
                 mimeType: selectedFile.type,
                 name: selectedFile.name,
+                size: selectedFile.size,
             });
             setImage(null); // Allow only one attachment type via button
         }
@@ -262,7 +264,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                       <ChevronDown className={`w-4 h-4 transition-transform ${isToolsOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {isToolsOpen && (
-                      <div className="absolute bottom-full mb-2 w-72 bg-white dark:bg-[#2E2F33] border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden z-10">
+                      <div className="absolute bottom-full mb-2 w-72 bg-white dark:bg-[#2E2F33] border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden z-20">
                          {tools.map(tool => {
                              const ToolIcon = tool.icon;
                              return (
@@ -317,32 +319,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
           <div className="flex items-end gap-3">
               <div className="relative flex items-end gap-2">
-                  {!image && !file && (
-                      <div ref={attachmentMenuRef} className="flex items-center h-14">
-                          <button
-                              onClick={() => setIsAttachmentMenuOpen(prev => !prev)}
-                              disabled={isLoading}
-                              className="p-3 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#2E2F33] hover:text-gray-800 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                              aria-label="Attach file"
-                          >
-                              <Paperclip className="h-7 w-7" />
-                          </button>
-                          {isAttachmentMenuOpen && (
-                            <div className="absolute bottom-full mb-2 w-48 bg-white dark:bg-[#2E2F33] border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden z-10">
-                                <button onClick={() => handleTriggerInput(cameraInputRef)} className="w-full flex items-center gap-3 p-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors">
-                                    <Camera className="w-4 h-4" /> Take Photo
-                                </button>
-                                <button onClick={() => handleTriggerInput(imageInputRef)} className="w-full flex items-center gap-3 p-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors">
-                                    <Image className="w-4 h-4" /> Upload Image
-                                </button>
-                                <button onClick={() => handleTriggerInput(fileInputRef)} className="w-full flex items-center gap-3 p-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors">
-                                    <File className="w-4 h-4" /> Upload File
-                                </button>
-                            </div>
-                          )}
-                      </div>
-                  )}
-                  
                   {/* Hidden file inputs */}
                   <input ref={cameraInputRef} type="file" capture="user" accept="image/*" onChange={handleFileChange} className="hidden" />
                   <input ref={imageInputRef} type="file" accept="image/png, image/jpeg, image/webp" onChange={handleFileChange} className="hidden" />
@@ -393,6 +369,31 @@ const ChatInput: React.FC<ChatInputProps> = ({
                   )}
               </div>
               <div className="relative flex-1">
+                  {!image && !file && (
+                      <div ref={attachmentMenuRef} className="absolute left-2 bottom-1.5 z-10">
+                          <button
+                              onClick={() => setIsAttachmentMenuOpen(prev => !prev)}
+                              disabled={isLoading}
+                              className="flex items-center justify-center w-10 h-10 p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#2E2F33] hover:text-gray-800 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              aria-label="Attach file"
+                          >
+                              <Paperclip className="h-6 w-6" />
+                          </button>
+                          {isAttachmentMenuOpen && (
+                            <div className="absolute bottom-full mb-2 w-48 bg-white dark:bg-[#2E2F33] border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden">
+                                <button onClick={() => handleTriggerInput(cameraInputRef)} className="w-full flex items-center gap-3 p-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors">
+                                    <Camera className="w-4 h-4" /> Take Photo
+                                </button>
+                                <button onClick={() => handleTriggerInput(imageInputRef)} className="w-full flex items-center gap-3 p-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors">
+                                    <Image className="w-4 h-4" /> Upload Image
+                                </button>
+                                <button onClick={() => handleTriggerInput(fileInputRef)} className="w-full flex items-center gap-3 p-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors">
+                                    <File className="w-4 h-4" /> Upload File
+                                </button>
+                            </div>
+                          )}
+                      </div>
+                  )}
                   <textarea
                       ref={textareaRef}
                       rows={1}
@@ -402,12 +403,12 @@ const ChatInput: React.FC<ChatInputProps> = ({
                       onPaste={handlePaste}
                       placeholder={placeholderText()}
                       disabled={isLoading}
-                      className="w-full bg-gray-100 dark:bg-[#1e1f22] border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 rounded-2xl py-2.5 pl-5 pr-14 min-h-[3.5rem] focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300 disabled:opacity-50 resize-none max-h-[8rem] overflow-y-auto scrollbar-hide"
+                      className={`w-full bg-gray-100 dark:bg-[#1e1f22] border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 rounded-2xl py-2.5 pr-14 min-h-[3.5rem] focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300 disabled:opacity-50 resize-none max-h-[8rem] overflow-y-auto scrollbar-hide ${image || file ? 'pl-4' : 'pl-12'}`}
                   />
                   <button
                       onClick={isLoading ? onCancelStream : handleSend}
                       disabled={!isLoading && (!input.trim() && !image && !file)}
-                      className={`absolute right-2 bottom-3 flex items-center justify-center transition-all duration-300 ${
+                      className={`absolute right-2 bottom-1.5 mb-[0.375rem] flex items-center justify-center transition-all duration-300 ${
                           isLoading 
                               ? 'bg-red-600 hover:bg-red-500 h-10 rounded-full' 
                               : 'bg-indigo-600 hover:bg-indigo-500 text-white disabled:bg-gray-400 dark:disabled:bg-gray-500 disabled:cursor-not-allowed w-10 h-10 rounded-full'

@@ -1,4 +1,5 @@
 
+
 import React, { useState, useRef, useCallback } from 'react';
 import { Content, Part } from '@google/ai';
 import { ChatMessage as ChatMessageType, Suggestion, ChatModel, LTM, CodeSnippet, GroundingChunk, UserProfile } from '../types';
@@ -11,6 +12,7 @@ import { processAndSaveCode, findRelevantCode } from '../services/codeService';
 import * as urlReaderService from '../services/urlReaderService';
 import { ImageGenerationOptions } from '../components/ImageOptionsModal';
 import { getFriendlyErrorMessage } from '../utils/errorUtils';
+import { logDev } from '../services/loggingService';
 
 const models = [
     { id: 'gemini-2.5-flash', name: 'Kalina 2.5 Flash' },
@@ -135,6 +137,7 @@ export const useChatHandler = ({
                 updateConversation(activeConversationId, c => ({ ...c, title: "Image Generation" }));
             }
         } catch (e: any) {
+            logDev('error', 'Error in handleExecuteImageGeneration:', e);
             const friendlyError = getFriendlyErrorMessage(e);
             setError(friendlyError);
             updateConversationMessages(activeConversationId, prev => {
@@ -153,7 +156,7 @@ export const useChatHandler = ({
         }
     }, [apiKey, imageGenerationPrompt, activeConversationId, conversations, updateConversation, updateConversationMessages, setAllGeneratedImages, setIsImageOptionsOpen, setIsLoading, setError]);
 
-    const handleSendMessage = useCallback(async (prompt: string, image?: { base64: string; mimeType: string; }, file?: { base64: string; mimeType: string; name: string; }, overrideModel?: ChatModel) => {
+    const handleSendMessage = useCallback(async (prompt: string, image?: { base64: string; mimeType: string; }, file?: { base64: string; mimeType: string; name: string; size: number; }, overrideModel?: ChatModel, isRetry = false) => {
         const fullPrompt = prompt;
         if ((!fullPrompt.trim() && !image && !file) || isLoading || !apiKey) return;
 
@@ -184,12 +187,27 @@ export const useChatHandler = ({
             setElapsedTime(elapsed);
         }, 53);
 
-        const newUserMessage: ChatMessageType = { id: crypto.randomUUID(), role: 'user', content: fullPrompt, image: image, file: file };
-        const planningMessage: ChatMessageType = { id: crypto.randomUUID(), role: 'model', content: '', isPlanning: true };
-        updateConversationMessages(currentConversationId, prev => [...prev, newUserMessage, planningMessage]);
+        const planningMessage: ChatMessageType = { id: crypto.randomUUID(), role: 'model', content: '', isPlanning: true, modelUsed: modelToUse };
+        
+        if (!isRetry) {
+            const newUserMessage: ChatMessageType = {
+                id: crypto.randomUUID(),
+                role: 'user',
+                content: fullPrompt,
+                image: image,
+                file: file,
+                modelUsed: modelToUse,
+                hasImage: !!image,
+                fileInfo: file ? { name: file.name, size: file.size, mimeType: file.mimeType } : undefined,
+            };
+            updateConversationMessages(currentConversationId, prev => [...prev, newUserMessage, planningMessage]);
+        } else {
+            updateConversationMessages(currentConversationId, prev => [...prev, planningMessage]);
+        }
 
         let longReadTimer: ReturnType<typeof setTimeout> | null = null;
         let isImageAnalysisRequest = false;
+        let isFileAnalysisRequest = false;
 
         try {
             const plan = await planResponse(fullPrompt, image, file, modelToUse);
@@ -200,6 +218,7 @@ export const useChatHandler = ({
             let isImageEdit = !!image && plan.isImageEditRequest;
             let isUrlReadRequest = plan.isUrlReadRequest;
             isImageAnalysisRequest = !!image && !isImageEdit && !isImageGeneration;
+            isFileAnalysisRequest = !!file;
             let finalPromptForModel = fullPrompt;
 
             if (selectedTool === 'imageGeneration') {
@@ -236,7 +255,13 @@ export const useChatHandler = ({
                 plan.thoughts = [];
                 // Start animation on the user's message
                 updateConversationMessages(currentConversationId, prev =>
-                    prev.map(m => m.id === newUserMessage.id ? { ...m, isAnalyzingImage: true } : m)
+                    prev.map(m => m.id === prev[prev.length - 2]?.id ? { ...m, isAnalyzingImage: true } : m)
+                );
+            }
+
+            if (isFileAnalysisRequest) {
+                updateConversationMessages(currentConversationId, prev =>
+                    prev.map(m => m.id === prev[prev.length - 2]?.id ? { ...m, isAnalyzingFile: true } : m)
                 );
             }
 
@@ -466,7 +491,7 @@ export const useChatHandler = ({
                         // If a tool that adds significant content to the prompt was used (image, url, search),
                         // show the total prompt tokens to reflect the tool's cost.
                         // Otherwise, only show the user's text tokens to hide history/system prompt cost.
-                        const toolUsed = isUrlReadRequest || isImageAnalysisRequest || isWebSearchEnabled;
+                        const toolUsed = isUrlReadRequest || isImageAnalysisRequest || isFileAnalysisRequest || isWebSearchEnabled;
                         const displayInputTokens = toolUsed ? totalPromptTokens : userTextTokens;
                         const systemTokens = toolUsed ? 0 : totalPromptTokens - userTextTokens;
 
@@ -499,7 +524,8 @@ export const useChatHandler = ({
                         .then(result => setCodeMemory(prev => [...prev, { id: crypto.randomUUID(), ...result, language: capturedMatch[1] || 'text', code: capturedMatch[2] }]));
                 }
 
-                if (finalCleanedResponse.trim()) {
+                // FIX: Update memory less frequently to avoid rate-limiting. Check every 4 turns (8 messages).
+                if (finalCleanedResponse.trim() && finalConversationState.messages.length > 1 && finalConversationState.messages.length % 8 === 0) {
                     updateMemory([{ role: 'user', parts: [{ text: fullPrompt }] }, { role: 'model', parts: [{ text: finalCleanedResponse }] }], ltm, userProfile, modelToUse)
                         .then(memoryResult => {
                             const { newMemories, updatedMemories, userProfileUpdates } = memoryResult;
@@ -543,6 +569,7 @@ export const useChatHandler = ({
                 }
             }
         } catch (e: any) {
+            logDev('error', 'Error in handleSendMessage:', e);
             const friendlyError = getFriendlyErrorMessage(e);
             setError(friendlyError);
             updateConversationMessages(currentConversationId, prev => {
@@ -563,7 +590,7 @@ export const useChatHandler = ({
             if (isImageAnalysisRequest) {
                  updateConversationMessages(currentConversationId, prev =>
                     prev.map(m => {
-                        if (m.id === newUserMessage.id && m.isAnalyzingImage) {
+                        if (m.isAnalyzingImage) {
                             const { isAnalyzingImage, ...rest } = m;
                             return rest;
                         }
@@ -571,6 +598,17 @@ export const useChatHandler = ({
                     })
                 );
             }
+            if (isFileAnalysisRequest) {
+                updateConversationMessages(currentConversationId, prev =>
+                   prev.map(m => {
+                       if (m.isAnalyzingFile) {
+                           const { isAnalyzingFile, ...rest } = m;
+                           return rest;
+                       }
+                       return m;
+                   })
+               );
+           }
 
             const finalElapsedTime = Date.now() - responseStartTimeRef.current;
             stopResponseTimer();

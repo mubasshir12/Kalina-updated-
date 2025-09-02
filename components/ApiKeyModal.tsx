@@ -38,7 +38,7 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onSetApiKey, onClose,
         <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200">{currentApiKey ? 'Update' : 'Enter'} Your API Key</h1>
             <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                To use Kalina AI, please provide your Google Gemini API key. It will be stored locally in your browser.
+                Your Google Gemini API key is required to power the AI. It is stored <strong className="text-gray-700 dark:text-gray-300">securely and locally</strong> in your browser and is never sent to our servers.
             </p>
         </div>
         

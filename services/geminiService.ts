@@ -1,49 +1,25 @@
 import { Part, Type } from "@google/genai";
 import { getAiClient } from "./aiClient";
+import { logDev } from "./loggingService";
 
-const planAndThinkSystemInstruction = `You are a highly intelligent router and planner. Your task is to analyze the user's prompt and determine the most effective strategy to respond.
+const planAndThinkSystemInstruction = `You are an intelligent router. Analyze the user's prompt to determine the correct response strategy. Respond ONLY with a valid JSON object.
 
-**CRITICAL: Your primary goal is to distinguish between web search, URL reads, complex, simple, and special case prompts.**
+**Decision Logic:**
 
-**1. Web Search Triggers (needsWebSearch: true):**
-Set 'needsWebSearch' to true for any query that:
-- Requires up-to-the-minute information (e.g., "latest news", "today's weather", "who won the game").
-- Involves current events, trending topics, or live data (e.g., sports scores, stock prices).
-- Asks about specific people, companies, or products where recent information is critical.
-- **Crucial Rule: If you are even slightly unsure whether your internal knowledge is up-to-date, it is ALWAYS better to perform a web search to provide the most accurate and current response.**
+1.  **\`needsWebSearch: true\`**: For queries requiring real-time, up-to-the-minute information (news, events, trends). **If knowledge freshness is uncertain, default to web search.**
+2.  **\`isUrlReadRequest: true\`**: If the prompt contains a URL and asks a question about it (e.g., "summarize this").
+3.  **Image/File Handling**:
+    *   **\`isImageEditRequest: true\`**: If an image is provided and the user asks to modify it.
+    *   **\`isImageGenerationRequest: true\`**: If the user asks to create an image and no image is provided.
+    *   For file analysis (PDF, TXT), set **\`needsThinking: true\`**.
+4.  **\`needsThinking: true\`**: For complex prompts requiring analysis, creativity, brainstorming, coding, planning, or detailed reasoning. Also for file analysis.
+5.  **\`needsThinking: false\`**: For simple, conversational prompts.
+6.  **\`needsCodeContext: true\`**: If the prompt is related to previously discussed code.
 
-**2. URL Read Triggers (isUrlReadRequest: true):**
-Set 'isUrlReadRequest' to true if the prompt contains a valid URL (e.g., http://, https://, www.) AND the user is asking a question ABOUT that URL (e.g., "summarize this page", "what are the key points of this article?").
-
-**3. Image & File Analysis:**
-- If an image is provided, determine the user's INTENT. If they ask to modify, change, or add to it, classify it as 'image edit'. Otherwise, it is not an 'edit' request.
-- If a file is provided (e.g., PDF, TXT), your primary task is to analyze its content. Always set 'needsThinking' to true for file analysis.
-
-**4. Complex Prompts (needsThinking: true):**
-Set 'needsThinking' to true for any prompt that requires:
-- Analysis, creativity, or brainstorming.
-- Detailed explanations or multi-step reasoning.
-- Writing code, creating a plan, or summarizing a long text.
-- Analysis of a provided file (PDF, TXT, etc.).
-- Any task that is not a simple conversational turn or a direct web search/URL read query.
-
-**5. Simple Prompts (needsThinking: false):**
-Set 'needsThinking' to false for low-complexity conversational prompts.
-
-Based on the prompt, you must respond ONLY with a valid JSON object.
-
-**JSON Schema:**
-- **\`needsWebSearch\` (boolean):** True if the query requires up-to-date information.
-- **\`isUrlReadRequest\` (boolean):** True if the prompt contains a URL to be read and analyzed.
-- **\`needsThinking\` (boolean):** True for complex tasks, false for simple ones.
-- **\`needsCodeContext\` (boolean):** True if prompt relates to previous code.
-- **\`isImageGenerationRequest\` (boolean):** True if user asks to create an image (and no image is provided).
-- **\`isImageEditRequest\` (boolean):** True if user provides an image and asks to modify it.
-- **\`thoughts\` (array, optional):** If 'needsThinking' is true, provide a step-by-step thought process.
-- **\`searchPlan\` (array, optional):** If 'needsWebSearch' is true, provide a step-by-step research plan.
-
-**Structure for 'thoughts' and 'searchPlan' items:**
-- Each item in the array is an object with 'phase', 'step', and 'concise_step' (3-5 words, ending in '-ing' for animations). The final 'concise_step' for 'thoughts' must be dynamic and end in '-ing' (e.g., 'Generating response...').`;
+**'thoughts' & 'searchPlan' Arrays:**
+- If \`needsThinking\` is true, provide a \`thoughts\` array.
+- If \`needsWebSearch\` is true, provide a \`searchPlan\` array.
+- Each item in these arrays must be an object with 'phase', 'step', and a 'concise_step' (3-5 words, ending in '-ing'). The final 'concise_step' for \`thoughts\` must be dynamic (e.g., 'Generating response...').`;
 
 export interface ThoughtStep {
     phase: string;
@@ -129,6 +105,7 @@ export const planResponse = async (prompt: string, image?: { base64: string; mim
     } catch (error)
     {
         console.error("Error planning response:", error);
+        logDev('error', 'Error in planResponse:', error);
         // Fallback: If planning fails, assume web search is needed but disable thinking.
         const needsWebSearch = true;
         return { 

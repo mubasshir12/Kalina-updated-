@@ -1,9 +1,68 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Conversation, ChatMessage as ChatMessageType } from '../types';
+import { logDev } from '../services/loggingService';
 
 export const useConversations = () => {
-    const [conversations, setConversations] = useState<Conversation[]>([]);
-    const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+    const [conversations, setConversations] = useState<Conversation[]>(() => {
+        try {
+            const storedConvos = localStorage.getItem('kalina_conversations');
+            return storedConvos ? JSON.parse(storedConvos) : [];
+        } catch (e) {
+            console.error("Failed to parse conversations from localStorage", e);
+            logDev('error', "Failed to parse conversations from localStorage", e);
+            return [];
+        }
+    });
+
+    const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
+        try {
+            const storedActiveId = localStorage.getItem('kalina_active_conversation_id');
+            const convosString = localStorage.getItem('kalina_conversations'); // Need to read it again
+            if (storedActiveId && convosString) {
+                const convos: Conversation[] = JSON.parse(convosString);
+                if (convos.some(c => c.id === storedActiveId)) {
+                    return storedActiveId;
+                }
+            }
+            return null;
+        } catch (e) {
+            console.error("Failed to parse active conversation ID from localStorage", e);
+            logDev('error', "Failed to parse active conversation ID from localStorage", e);
+            return null;
+        }
+    });
+
+    useEffect(() => {
+        try {
+            // Create a version of conversations without large base64 data for storage.
+            const conversationsForStorage = conversations.map(convo => ({
+                ...convo,
+                messages: convo.messages.map(msg => {
+                    // Destructure to remove image and file, but keep everything else
+                    // including hasImage and fileInfo which are preserved in restOfMsg.
+                    const { image, file, ...restOfMsg } = msg;
+                    return restOfMsg;
+                })
+            }));
+            localStorage.setItem('kalina_conversations', JSON.stringify(conversationsForStorage));
+        } catch (e) {
+            console.error("Failed to save conversations to localStorage", e);
+            logDev('error', "Failed to save conversations to localStorage", e);
+        }
+    }, [conversations]);
+
+    useEffect(() => {
+        try {
+            if (activeConversationId) {
+                localStorage.setItem('kalina_active_conversation_id', activeConversationId);
+            } else {
+                localStorage.removeItem('kalina_active_conversation_id');
+            }
+        } catch (e) {
+            console.error("Failed to save active conversation ID to localStorage", e);
+            logDev('error', "Failed to save active conversation ID to localStorage", e);
+        }
+    }, [activeConversationId]);
 
     const activeConversation = useMemo(() =>
         conversations.find(c => c.id === activeConversationId),
@@ -53,9 +112,9 @@ export const useConversations = () => {
     const handleDeleteConversation = useCallback((id: string) => {
         setConversations(prev => prev.filter(c => c.id !== id));
         if (activeConversationId === id) {
-            setActiveConversationId(null);
+            setActiveConversationId(conversations.length > 1 ? (sortedConversations.find(c => c.id !== id)?.id ?? null) : null);
         }
-    }, [activeConversationId]);
+    }, [activeConversationId, conversations, sortedConversations]);
 
     const handlePinConversation = useCallback((id: string) => {
         updateConversation(id, c => ({ ...c, isPinned: !c.isPinned }));

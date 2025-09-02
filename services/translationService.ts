@@ -1,10 +1,8 @@
 
 import { getAiClient } from "./aiClient";
+import { logDev } from "./loggingService";
 
-const translateSystemInstruction = `You are an expert translator AI. Your sole purpose is to translate text accurately and concisely.
-- Detect the source language if the user specifies "auto".
-- Translate the provided text to the specified target language.
-- **CRITICAL:** Your response MUST contain ONLY the translated text. Do NOT include any explanations, greetings, apologies, or extra text like "Here is the translation:". Just the raw translation.`;
+const translateSystemInstruction = `You are an expert translator. Your task is to accurately translate text. Detect source language if "auto" is specified. **CRITICAL: Your response must contain ONLY the translated text.** No extra words, explanations, or greetings.`;
 
 export const translateText = async (
     text: string,
@@ -37,6 +35,7 @@ export const translateText = async (
         return { translatedText, inputTokens, outputTokens };
     } catch (error) {
         console.error("Error translating text:", error);
+        logDev('error', 'Error in translateText:', error);
         let errorMessage = "Error: Could not translate.";
         if (error instanceof Error) {
             errorMessage = `Error: Could not translate. ${error.message}`;
