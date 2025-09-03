@@ -9,7 +9,7 @@ interface UsageStatsViewProps {
 }
 
 const StatCard: React.FC<{ icon?: React.ElementType, label: string, value: string, colorClass: string, helpText: string }> = ({ icon: Icon, label, value, colorClass, helpText }) => (
-    <div className="bg-white/80 dark:bg-[#2E2F33]/80 backdrop-blur-sm p-3 sm:p-4 rounded-xl flex items-center gap-2 sm:gap-4 border border-neutral-200 dark:border-gray-700/50">
+    <div className="bg-white/80 dark:bg-dark-menu/80 backdrop-blur-sm p-3 sm:p-4 rounded-xl flex items-center gap-2 sm:gap-4 border border-neutral-200 dark:border-gray-700/50">
         {Icon && (
             <div className={`p-2 sm:p-3 rounded-full ${colorClass} flex-shrink-0`}>
                 <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
@@ -87,7 +87,7 @@ const UsageStatsView: React.FC<UsageStatsViewProps> = ({ conversations, translat
                     <h1 className="text-2xl md:text-3xl font-bold text-neutral-800 dark:text-gray-200">Usage Dashboard</h1>
                 </div>
 
-                <div className="bg-white/80 dark:bg-[#1e1f22]/80 backdrop-blur-sm rounded-2xl shadow-sm border border-neutral-200 dark:border-gray-700 mb-6 p-6">
+                <div className="bg-white/80 dark:bg-dark-sheet/80 backdrop-blur-sm rounded-2xl shadow-sm border border-neutral-200 dark:border-gray-700 mb-6 p-6">
                     <h2 className="text-lg font-semibold text-neutral-800 dark:text-gray-200 mb-1">Overall Usage</h2>
                     <p className="text-sm text-neutral-500 dark:text-gray-400 mb-4">Total tokens used across all tools.</p>
                     
@@ -121,7 +121,7 @@ const UsageStatsView: React.FC<UsageStatsViewProps> = ({ conversations, translat
                     <h2 className="text-xl font-semibold text-neutral-800 dark:text-gray-200 mb-4">Chat Conversation Breakdown</h2>
                     <div className="space-y-3">
                         {conversationStats.map(stats => (
-                             <div key={stats.id} className="bg-white/80 dark:bg-[#1e1f22]/80 backdrop-blur-sm rounded-xl p-4 border border-neutral-200 dark:border-gray-700">
+                             <div key={stats.id} className="bg-white/80 dark:bg-dark-sheet/80 backdrop-blur-sm rounded-xl p-4 border border-neutral-200 dark:border-gray-700">
                                 <div className="flex justify-between items-start mb-2">
                                     <div>
                                         <p className="font-medium text-neutral-800 dark:text-gray-200 line-clamp-1">{stats.title}</p>
@@ -142,7 +142,7 @@ const UsageStatsView: React.FC<UsageStatsViewProps> = ({ conversations, translat
                             </div>
                         ))}
                          {conversationStats.length === 0 && (
-                             <div className="text-center text-neutral-500 dark:text-gray-400 py-12 px-4 bg-white/80 dark:bg-[#1e1f22]/80 backdrop-blur-sm rounded-xl border border-dashed border-neutral-300 dark:border-gray-700">
+                             <div className="text-center text-neutral-500 dark:text-gray-400 py-12 px-4 bg-white/80 dark:bg-dark-sheet/80 backdrop-blur-sm rounded-xl border border-dashed border-neutral-300 dark:border-gray-700">
                                 <MessageSquareText className="h-12 w-12 mx-auto text-neutral-400 dark:text-gray-500 mb-3" />
                                 <h3 className="font-semibold text-neutral-800 dark:text-gray-200">No Chat Usage Data</h3>
                                 <p className="text-sm">Start a conversation to see token statistics.</p>

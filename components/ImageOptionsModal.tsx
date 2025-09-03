@@ -30,7 +30,7 @@ const ImageOptionsModal: React.FC<ImageOptionsModalProps> = ({ isOpen, onClose, 
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" aria-modal="true">
-            <div className="bg-white dark:bg-[#1e1f22] rounded-2xl shadow-xl w-full max-w-md transform transition-all" role="dialog">
+            <div className="bg-white dark:bg-dark-sheet rounded-2xl shadow-xl w-full max-w-md transform transition-all" role="dialog">
                 <div className="p-6 border-b border-neutral-200 dark:border-gray-700 flex justify-between items-center">
                     <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Image Generation Options</h2>
                     <button 
@@ -90,7 +90,7 @@ const ImageOptionsModal: React.FC<ImageOptionsModalProps> = ({ isOpen, onClose, 
                 <div className="px-6 py-4 bg-neutral-50 dark:bg-gray-900/50 rounded-b-2xl flex justify-end">
                     <button
                         onClick={handleGenerate}
-                        className="px-6 py-2.5 bg-amber-600 text-white font-semibold rounded-lg hover:bg-amber-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 focus:ring-offset-neutral-50 dark:focus:ring-offset-[#1e1f22]"
+                        className="px-6 py-2.5 bg-amber-600 text-white font-semibold rounded-lg hover:bg-amber-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 focus:ring-offset-neutral-50 dark:focus:ring-offset-dark-sheet"
                     >
                         Generate
                     </button>

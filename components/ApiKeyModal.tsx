@@ -33,8 +33,8 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onSetApiKey, onClose,
   }
 
   return (
-    <div className="fixed inset-0 bg-[#F9F6F2] dark:bg-[#131314] flex items-center justify-center z-50 p-4" onClick={!currentApiKey ? undefined : onClose}>
-      <div className="w-full max-w-md bg-white dark:bg-[#1e1f22] rounded-2xl shadow-xl p-8 space-y-6" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-light-bg dark:bg-dark-bg flex items-center justify-center z-50 p-4" onClick={!currentApiKey ? undefined : onClose}>
+      <div className="w-full max-w-md bg-white dark:bg-dark-sheet rounded-2xl shadow-xl p-8 space-y-6" onClick={(e) => e.stopPropagation()}>
         <div className="text-center">
             <h1 className="text-2xl font-bold text-neutral-800 dark:text-gray-200">{currentApiKey ? 'Update' : 'Enter'} Your API Key</h1>
             <p className="mt-2 text-sm text-neutral-500 dark:text-gray-400">
@@ -75,7 +75,7 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onSetApiKey, onClose,
             )}
             <button
                 onClick={handleSubmit}
-                className="w-full px-6 py-2.5 bg-amber-600 text-white font-semibold rounded-lg hover:bg-amber-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 dark:focus:ring-offset-[#1e1f22]"
+                className="w-full px-6 py-2.5 bg-amber-600 text-white font-semibold rounded-lg hover:bg-amber-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 dark:focus:ring-offset-dark-sheet"
             >
                 {currentApiKey ? 'Update Key' : 'Continue'}
             </button>

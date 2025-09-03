@@ -128,7 +128,7 @@ const TranslatorView: React.FC<TranslatorViewProps> = ({ onBack, onTranslationCo
                     <h1 className="text-2xl md:text-3xl font-bold text-neutral-800 dark:text-gray-200">Translator</h1>
                 </div>
 
-                <div className="bg-white/80 dark:bg-[#1e1f22]/80 backdrop-blur-sm rounded-2xl shadow-lg border border-neutral-200 dark:border-gray-700 flex-1 flex flex-col overflow-hidden">
+                <div className="bg-white/80 dark:bg-dark-sheet/80 backdrop-blur-sm rounded-2xl shadow-lg border border-neutral-200 dark:border-gray-700 flex-1 flex flex-col overflow-hidden">
                     {/* Source Text Area */}
                     <div className="p-4 flex flex-col flex-1">
                         <div className="relative flex-1 flex flex-col">
@@ -157,13 +157,13 @@ const TranslatorView: React.FC<TranslatorViewProps> = ({ onBack, onTranslationCo
 
                     {/* Language Controls */}
                     <div className="border-y border-neutral-200 dark:border-gray-700 flex items-center justify-between p-2 sm:p-3 gap-2 flex-wrap">
-                        <select value={sourceLang} onChange={(e) => setSourceLang(e.target.value)} className="flex-1 min-w-[120px] bg-neutral-100 dark:bg-[#2E2F33] border border-neutral-300 dark:border-gray-600 rounded-lg py-2 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 appearance-none">
+                        <select value={sourceLang} onChange={(e) => setSourceLang(e.target.value)} className="flex-1 min-w-[120px] bg-neutral-100 dark:bg-dark-menu border border-neutral-300 dark:border-gray-600 rounded-lg py-2 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 appearance-none">
                             {sourceLanguages.map(lang => <option key={lang.code} value={lang.code}>{lang.name}</option>)}
                         </select>
-                        <button onClick={handleSwapLanguages} disabled={sourceLang === 'auto' || isLoading} className="p-2 sm:p-3 rounded-full bg-neutral-100 dark:bg-[#2E2F33] border border-neutral-300 dark:border-gray-600 hover:bg-neutral-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all" aria-label="Swap languages">
+                        <button onClick={handleSwapLanguages} disabled={sourceLang === 'auto' || isLoading} className="p-2 sm:p-3 rounded-full bg-neutral-100 dark:bg-dark-menu border border-neutral-300 dark:border-gray-600 hover:bg-neutral-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all" aria-label="Swap languages">
                             <ArrowRightLeft className="h-5 w-5 text-neutral-600 dark:text-gray-400" />
                         </button>
-                        <select value={targetLang} onChange={(e) => setTargetLang(e.target.value)} className="flex-1 min-w-[120px] bg-neutral-100 dark:bg-[#2E2F33] border border-neutral-300 dark:border-gray-600 rounded-lg py-2 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 appearance-none">
+                        <select value={targetLang} onChange={(e) => setTargetLang(e.target.value)} className="flex-1 min-w-[120px] bg-neutral-100 dark:bg-dark-menu border border-neutral-300 dark:border-gray-600 rounded-lg py-2 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 appearance-none">
                             {targetLanguages.map(lang => <option key={lang.code} value={lang.code}>{lang.name}</option>)}
                         </select>
                     </div>

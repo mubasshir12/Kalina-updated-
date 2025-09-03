@@ -73,7 +73,7 @@ const ChatHistorySheet: React.FC<ChatHistorySheetProps> = ({
                 aria-hidden="true"
             ></div>
             <div
-                className={`fixed bottom-0 left-0 right-0 z-30 bg-white dark:bg-[#1e1f22] rounded-t-2xl shadow-2xl transition-transform duration-300 ease-in-out flex flex-col ${
+                className={`fixed bottom-0 left-0 right-0 z-30 bg-white dark:bg-dark-sheet rounded-t-2xl shadow-2xl transition-transform duration-300 ease-in-out flex flex-col ${
                     isOpen ? 'translate-y-0' : 'translate-y-full'
                 }`}
                 style={{ height: '60vh' }}
@@ -152,7 +152,7 @@ const ChatHistorySheet: React.FC<ChatHistorySheetProps> = ({
                                     )}
 
                                     {openMenuId === convo.id && (
-                                        <div ref={menuRef} className={`absolute right-4 ${menuPositionClass} z-50 w-40 bg-white dark:bg-[#2E2F33] border border-neutral-200 dark:border-gray-600 rounded-lg shadow-lg overflow-hidden`}>
+                                        <div ref={menuRef} className={`absolute right-4 ${menuPositionClass} z-50 w-40 bg-white dark:bg-dark-menu border border-neutral-200 dark:border-gray-600 rounded-lg shadow-lg overflow-hidden`}>
                                             <button onClick={() => handleStartRename(convo)} className="w-full flex items-center gap-3 p-2.5 text-sm text-neutral-700 dark:text-gray-300 hover:bg-neutral-100 dark:hover:bg-gray-700/70 transition-colors">
                                                 <Pencil className="w-4 h-4" /> Rename
                                             </button>

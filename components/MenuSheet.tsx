@@ -36,7 +36,7 @@ const MenuSheet: React.FC<MenuSheetProps> = ({
                 aria-hidden="true"
             />
             <div
-                className={`fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#1e1f22] rounded-t-2xl shadow-2xl transition-transform duration-300 ease-in-out ${isOpen ? 'translate-y-0' : 'translate-y-full'}`}
+                className={`fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-dark-sheet rounded-t-2xl shadow-2xl transition-transform duration-300 ease-in-out ${isOpen ? 'translate-y-0' : 'translate-y-full'}`}
                 role="dialog"
                 aria-modal="true"
             >
@@ -69,7 +69,7 @@ const MenuSheet: React.FC<MenuSheetProps> = ({
                                         </div>
                                         <button
                                             onClick={() => setConsoleMode(consoleMode === 'auto' ? 'manual' : 'auto')}
-                                            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-[#1e1f22] ${consoleMode === 'manual' ? 'bg-amber-600' : 'bg-neutral-300 dark:bg-gray-600'}`}
+                                            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-dark-sheet ${consoleMode === 'manual' ? 'bg-amber-600' : 'bg-neutral-300 dark:bg-gray-600'}`}
                                             role="switch"
                                             aria-checked={consoleMode === 'manual'}
                                         >

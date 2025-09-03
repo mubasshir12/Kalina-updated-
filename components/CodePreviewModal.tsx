@@ -147,7 +147,7 @@ const CodePreviewModal: React.FC<CodePreviewModalProps> = ({ initialCode, langua
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-[#1e1f22] rounded-2xl shadow-xl w-full max-w-4xl h-[90vh] flex flex-col" role="dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-white dark:bg-dark-sheet rounded-2xl shadow-xl w-full max-w-4xl h-[90vh] flex flex-col" role="dialog" onClick={(e) => e.stopPropagation()}>
                 <header className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center flex-shrink-0">
                     <div className="flex items-center gap-3">
                         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Live Preview</h2>
@@ -169,7 +169,7 @@ const CodePreviewModal: React.FC<CodePreviewModalProps> = ({ initialCode, langua
                 <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
                     <div className="flex-1 p-2 bg-gray-100 dark:bg-gray-900">
                         {isFixing ? (
-                            <div className="w-full h-full flex flex-col items-center justify-center bg-white dark:bg-[#1e1f22] rounded-lg">
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-white dark:bg-dark-sheet rounded-lg">
                                 <LoaderCircle className="h-8 w-8 text-indigo-500 animate-spin" />
                                 <p className="mt-4 text-gray-600 dark:text-gray-400">AI is fixing the code...</p>
                             </div>
@@ -207,7 +207,7 @@ const CodePreviewModal: React.FC<CodePreviewModalProps> = ({ initialCode, langua
                         </div>
 
                         {isConsoleOpen && (
-                            <div className="flex-1 p-2 overflow-y-auto text-xs font-mono bg-white dark:bg-[#131314]">
+                            <div className="flex-1 p-2 overflow-y-auto text-xs font-mono bg-white dark:bg-dark-bg">
                                 {logs.length === 0 && <div className="text-gray-400 dark:text-gray-500 p-2">Console is empty.</div>}
                                 {logs.map((log, index) => (
                                     <div key={index} className={`p-1.5 border-b border-gray-100 dark:border-gray-800 ${log.level === 'error' ? 'text-red-600 dark:text-red-400' : log.level === 'warn' ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-700 dark:text-gray-300'}`}>

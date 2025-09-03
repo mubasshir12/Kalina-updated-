@@ -49,7 +49,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
                 <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
             {isOpen && (
-                <div className="absolute bottom-full mb-2 w-64 bg-white dark:bg-[#2E2F33] border border-neutral-200 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden z-20">
+                <div className="absolute bottom-full mb-2 w-64 bg-white dark:bg-dark-menu border border-neutral-200 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden z-20">
                     {models.map(model => (
                         <button
                             key={model.id}
