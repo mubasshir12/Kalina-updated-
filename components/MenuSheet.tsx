@@ -1,7 +1,7 @@
 import React from 'react';
 import { Image as GalleryIcon, BrainCircuit, BarChart3, Terminal } from 'lucide-react';
 import { ConsoleMode } from '../types';
-import { IS_DEV_CONSOLE_ENABLED } from '../../config';
+import { IS_DEV_CONSOLE_ENABLED } from '../config';
 
 interface MenuSheetProps {
     isOpen: boolean;

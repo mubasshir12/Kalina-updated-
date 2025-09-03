@@ -1,6 +1,8 @@
 
 
 
+
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Suggestion, Tool, ChatModel, ModelInfo, View, ConsoleMode } from './types';
 import { initializeAiClient } from './services/aiClient';
@@ -18,7 +20,7 @@ import ConfirmationModal from './components/ConfirmationModal';
 import ImagePromptSuggestions from './components/ImagePromptSuggestions';
 import ModelSwitchModal from './components/ModelSwitchModal';
 import { codeKeywords } from './utils/codeKeywords';
-import { IS_DEV_CONSOLE_ENABLED } from '../config';
+import { IS_DEV_CONSOLE_ENABLED } from './config';
 import DevConsole from './components/DevConsole';
 import ConsoleToggleButton from './components/ConsoleToggleButton';
 import { useDebug } from './contexts/DebugContext';
