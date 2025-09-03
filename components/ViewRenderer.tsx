@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Conversation, LTM, Suggestion, View } from '../types';
 import ChatHistory from './ChatHistory';
@@ -35,7 +33,9 @@ interface ViewRendererProps {
     scrollContainerRef: React.RefObject<HTMLDivElement>;
     onCloseTranslator: () => void;
     onTranslationComplete: (tokens: { input: number; output: number }) => void;
-    onOpenCodePreview: (code: string, language: string, messageId: string, originalCode: string) => void;
+    setModalImage: (url: string | null) => void;
+    setImageToDownload: (base64: string | null) => void;
+    setCodeForPreview: (data: { code: string; language: string; onFix: (newCode: string) => void; } | null) => void;
 }
 
 const ViewRenderer: React.FC<ViewRendererProps> = ({
@@ -62,7 +62,9 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
     scrollContainerRef,
     onCloseTranslator,
     onTranslationComplete,
-    onOpenCodePreview,
+    setModalImage,
+    setImageToDownload,
+    setCodeForPreview,
 }) => {
     const [activeMessageIndex, setActiveMessageIndex] = useState<number | null>(null);
 
@@ -163,7 +165,9 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
                                                 onToggleAudio={handleToggleAudio}
                                                 onCancelStream={handleCancelStream}
                                                 scrollContainerRef={scrollContainerRef}
-                                                onOpenCodePreview={onOpenCodePreview}
+                                                setModalImage={setModalImage}
+                                                setImageToDownload={setImageToDownload}
+                                                setCodeForPreview={setCodeForPreview}
                                             />
                                         )}
                                     </div>

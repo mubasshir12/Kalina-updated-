@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { ChatMessage as ChatMessageType } from '../../types';
 import MessageContent from './MessageContent';
@@ -9,7 +8,6 @@ import MessageMetadata from './MessageMetadata';
 interface ModelMessageProps extends ChatMessageType {
     setModalImage: (url: string | null) => void;
     setImageToDownload: (base64: string | null) => void;
-    // FIX: Add properties passed down from ChatMessage that are used here or in child components.
     isStreaming?: boolean;
     isThinking?: boolean;
     isSearchingWeb?: boolean;
@@ -18,7 +16,7 @@ interface ModelMessageProps extends ChatMessageType {
     onUpdateMessageContent: (messageId: string, newContent: string) => void;
     isSpeaking?: boolean;
     onToggleAudio?: (id: string, text: string) => void;
-    onOpenCodePreview?: (code: string, language: string, messageId: string, originalCode: string) => void;
+    setCodeForPreview: (data: { code: string; language: string; onFix: (newCode: string) => void; } | null) => void;
 }
 
 const ModelMessage: React.FC<ModelMessageProps> = (props) => {

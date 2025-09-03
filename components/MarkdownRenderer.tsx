@@ -1,3 +1,5 @@
+
+
 import React from 'react';
 import { GroundingChunk } from '../types';
 import CodeBlock from './CodeBlock';
@@ -85,10 +87,11 @@ interface MarkdownRendererProps {
     sources?: GroundingChunk[];
     onContentUpdate: (newContent: string) => void;
     isStreaming?: boolean;
-    onOpenCodePreview?: (code: string, language: string, originalCode: string) => void;
+    // FIX: Make setCodeForPreview optional to allow usage in components without a preview feature.
+    setCodeForPreview?: (data: { code: string; language: string; onFix: (newCode: string) => void; } | null) => void;
 }
 
-const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, sources, onContentUpdate, isStreaming, onOpenCodePreview }) => {
+const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, sources, onContentUpdate, isStreaming, setCodeForPreview }) => {
     const lines = content.split('\n');
     const elements: React.ReactNode[] = [];
     let currentList: { type: 'ul' | 'ol'; items: React.ReactNode[] } | null = null;
@@ -114,6 +117,14 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, sources, o
         }
     };
 
+    const handlePersistCodeUpdate = (oldCode: string, newCode: string, language: string) => {
+        const oldCodeBlock = `\`\`\`${language}\n${oldCode}\n\`\`\``;
+        const newCodeBlock = `\`\`\`${language}\n${newCode}\n\`\`\``;
+        // A simple replace is generally safe as the same code block is unlikely to appear twice in one message.
+        // For more complex scenarios, a more robust replacement strategy would be needed.
+        onContentUpdate(content.replace(oldCodeBlock, newCodeBlock));
+    };
+
     lines.forEach((line, index) => {
         // Code blocks
         if (line.trim().startsWith('```')) {
@@ -125,8 +136,9 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, sources, o
                     key={`code-${index}`} 
                     language={lang} 
                     code={code}
-                    onOpenPreview={onOpenCodePreview ? (currentCode) => onOpenCodePreview(currentCode, lang, code) : undefined}
+                    onPersistUpdate={(old, newC) => handlePersistCodeUpdate(old, newC, lang)}
                     isStreaming={isStreaming}
+                    setCodeForPreview={setCodeForPreview}
                 />);
                 inCodeBlock = false;
                 codeBlockContent = [];
@@ -209,8 +221,9 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, sources, o
             key="code-at-end" 
             language={lang} 
             code={code}
-            onOpenPreview={onOpenCodePreview ? (currentCode) => onOpenCodePreview(currentCode, lang, code) : undefined}
+            onPersistUpdate={(old, newC) => handlePersistCodeUpdate(old, newC, lang)}
             isStreaming={isStreaming}
+            setCodeForPreview={setCodeForPreview}
         />);
     }
 

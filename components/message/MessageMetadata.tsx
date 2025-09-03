@@ -37,7 +37,7 @@ const MessageMetadata: React.FC<MessageMetadataProps> = ({ modelUsed, inputToken
             <div className="flex items-center gap-x-4 gap-y-1 flex-wrap">
                 {modelUsed && <ModelInfoDisplay modelId={modelUsed} />}
                 {generationTime && generationTime > 0 && (
-                    <Tooltip content={<>Total time from request to<br />full response.</>} position="bottom">
+                    <Tooltip content="Total time from request to full response." position="bottom">
                         <span className="cursor-help">{`${(generationTime / 1000).toFixed(1)}s`}</span>
                     </Tooltip>
                 )}

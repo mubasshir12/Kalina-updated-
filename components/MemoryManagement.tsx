@@ -99,7 +99,7 @@ const MemoryManagement: React.FC<MemoryManagementProps> = ({ memory, setMemory, 
                     <h1 className="text-2xl md:text-3xl font-bold text-neutral-800 dark:text-gray-200">Long-Term Memory</h1>
                 </div>
                 
-                <div className="bg-white/80 dark:bg-dark-sheet/80 backdrop-blur-sm rounded-xl shadow-sm border border-neutral-200 dark:border-gray-700">
+                <div className="bg-white/80 dark:bg-[#1e1f22]/80 backdrop-blur-sm rounded-xl shadow-sm border border-neutral-200 dark:border-gray-700">
                     <div className="p-4 border-b border-neutral-200 dark:border-gray-700">
                         <h2 className="text-lg font-semibold text-neutral-800 dark:text-gray-200">Saved Facts</h2>
                         <p className="text-sm text-neutral-500 dark:text-gray-400">Long-press on an item to delete it.</p>

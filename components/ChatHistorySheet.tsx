@@ -73,15 +73,15 @@ const ChatHistorySheet: React.FC<ChatHistorySheetProps> = ({
                 aria-hidden="true"
             ></div>
             <div
-                className={`fixed bottom-0 left-0 right-0 z-30 bg-white dark:bg-dark-sheet rounded-t-2xl shadow-2xl transition-transform duration-300 ease-in-out flex flex-col ${
+                className={`fixed bottom-0 left-0 right-0 z-30 bg-white dark:bg-[#1e1f22] rounded-t-2xl shadow-2xl transition-transform duration-300 ease-in-out ${
                     isOpen ? 'translate-y-0' : 'translate-y-full'
                 }`}
-                style={{ height: '60vh' }}
+                style={{ maxHeight: '60vh' }}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="history-sheet-title"
             >
-                <div className="p-4 border-b border-neutral-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
+                <div className="p-4 border-b border-neutral-200 dark:border-gray-700 flex items-center justify-between sticky top-0 bg-white dark:bg-[#1e1f22]">
                     <h2 id="history-sheet-title" className="text-lg font-semibold text-neutral-800 dark:text-gray-200">
                         Chat History
                     </h2>
@@ -94,17 +94,14 @@ const ChatHistorySheet: React.FC<ChatHistorySheetProps> = ({
                         New Chat
                     </button>
                 </div>
-                <div className="overflow-y-auto p-2 flex-grow">
+                <div className="overflow-y-auto p-2" style={{ maxHeight: 'calc(60vh - 65px)' }}>
                     {conversations.length === 0 ? (
                         <div className="text-center py-8 text-neutral-500 dark:text-gray-400">
                             No conversations yet.
                         </div>
                     ) : (
                         <ul>
-                            {conversations.map((convo, index) => {
-                                const isLastTwo = conversations.length > 2 && index >= conversations.length - 2;
-                                const menuPositionClass = isLastTwo ? 'bottom-12' : 'top-12';
-
+                            {conversations.map((convo) => {
                                 return (
                                 <li key={convo.id} className="group relative">
                                     {renamingId === convo.id ? (
@@ -152,7 +149,7 @@ const ChatHistorySheet: React.FC<ChatHistorySheetProps> = ({
                                     )}
 
                                     {openMenuId === convo.id && (
-                                        <div ref={menuRef} className={`absolute right-4 ${menuPositionClass} z-50 w-40 bg-white dark:bg-dark-menu border border-neutral-200 dark:border-gray-600 rounded-lg shadow-lg overflow-hidden`}>
+                                        <div ref={menuRef} className="absolute right-4 top-12 z-50 w-40 bg-white dark:bg-[#2E2F33] border border-neutral-200 dark:border-gray-600 rounded-lg shadow-lg overflow-hidden">
                                             <button onClick={() => handleStartRename(convo)} className="w-full flex items-center gap-3 p-2.5 text-sm text-neutral-700 dark:text-gray-300 hover:bg-neutral-100 dark:hover:bg-gray-700/70 transition-colors">
                                                 <Pencil className="w-4 h-4" /> Rename
                                             </button>

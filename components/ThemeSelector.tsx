@@ -83,7 +83,7 @@ const ThemeSelector: React.FC = () => {
                 <ThemeIcon className="h-6 w-6" />
             </button>
             {isOpen && (
-                <div className="absolute top-full right-0 mt-2 w-36 bg-white dark:bg-dark-menu border border-neutral-200 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden z-20">
+                <div className="absolute top-full right-0 mt-2 w-36 bg-white dark:bg-[#2E2F33] border border-neutral-200 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden z-20">
                     <button
                         onClick={() => handleThemeChange('light')}
                         className={`w-full text-left p-3 text-sm flex items-center gap-2 ${theme === 'light' ? 'text-amber-600 dark:text-amber-400' : 'text-neutral-800 dark:text-gray-200'} hover:bg-neutral-100 dark:hover:bg-gray-700/70 transition-colors`}

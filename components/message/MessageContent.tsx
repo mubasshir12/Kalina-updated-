@@ -1,8 +1,5 @@
 
-
-
-
-import React, { useCallback } from 'react';
+import React from 'react';
 import { ChatMessage as ChatMessageType } from '../../types';
 import MarkdownRenderer from '../MarkdownRenderer';
 import ThinkingProcess from '../ThinkingProcess';
@@ -11,7 +8,6 @@ import UrlReaderAnimation from '../UrlReaderAnimation';
 import GeneratedImage from '../GeneratedImage';
 import { Brain } from 'lucide-react';
 import ImageGenerationAnimation from '../ImageGenerationAnimation';
-import { useSmoothStream } from '../../hooks/useSmoothStream';
 
 const SkeletonLoader: React.FC = () => (
     <div className="space-y-3 py-2">
@@ -44,12 +40,11 @@ const ImageGenerationLoader: React.FC<{ count: number; aspectRatio?: "1:1" | "16
 interface MessageContentProps extends ChatMessageType {
     setModalImage: (url: string | null) => void;
     setImageToDownload: (base64: string | null) => void;
-    // FIX: Add missing properties that are destructured in the component.
     isStreaming?: boolean;
     isThinking?: boolean;
     isSearchingWeb?: boolean;
     onUpdateMessageContent: (messageId: string, newContent: string) => void;
-    onOpenCodePreview?: (code: string, language: string, messageId: string, originalCode: string) => void;
+    setCodeForPreview: (data: { code: string; language: string; onFix: (newCode: string) => void; } | null) => void;
 }
 
 const MessageContent: React.FC<MessageContentProps> = ({
@@ -75,16 +70,11 @@ const MessageContent: React.FC<MessageContentProps> = ({
     onUpdateMessageContent,
     setModalImage,
     setImageToDownload,
-    onOpenCodePreview,
+    setCodeForPreview,
 }) => {
     const showThinkingProcess = isThinking || (thoughts && thoughts.length > 0);
-    const smoothContent = useSmoothStream(content, !!isStreaming);
     const showImageLoader = isGeneratingImage || isEditingImage;
     const showFinalImages = generatedImagesBase64 && generatedImagesBase64.length > 0 && !showImageLoader;
-
-    const handleOpenPreviewWithId = useCallback((code: string, language: string, originalCode: string) => {
-        onOpenCodePreview?.(code, language, id, originalCode);
-    }, [id, onOpenCodePreview]);
 
     return (
         <>
@@ -142,9 +132,9 @@ const MessageContent: React.FC<MessageContentProps> = ({
                 </div>
             )}
 
-            {smoothContent ? <MarkdownRenderer content={smoothContent} sources={sources} onContentUpdate={(newContent) => onUpdateMessageContent(id, newContent)} isStreaming={!!isStreaming} onOpenCodePreview={onOpenCodePreview ? handleOpenPreviewWithId : undefined} /> : null}
+            {content ? <MarkdownRenderer content={content} sources={sources} onContentUpdate={(newContent) => onUpdateMessageContent(id, newContent)} isStreaming={!!isStreaming} setCodeForPreview={setCodeForPreview} /> : null}
             
-            {isStreaming && smoothContent ? <span className="inline-block w-2 h-4 bg-neutral-800 dark:bg-white animate-pulse ml-1" /> : null}
+            {isStreaming && content ? <span className="inline-block w-2 h-4 bg-neutral-800 dark:bg-white animate-pulse ml-1" /> : null}
             </div>
        </>
     );

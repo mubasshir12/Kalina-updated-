@@ -39,7 +39,7 @@ export const generateImage = async (prompt: string, numberOfImages: number, aspe
     const ai = getAiClient();
     try {
         const response = await ai.models.generateImages({
-            model: 'gemini-2.5-flash-image-preview',
+            model: 'imagen-4.0-generate-001',
             prompt: prompt,
             config: {
               numberOfImages: numberOfImages,

@@ -103,6 +103,7 @@ const LogEntryItem: React.FC<{ log: ConsoleLogEntry }> = ({ log }) => {
                         </div>
                     ) : (
                         <div className="text-sm text-neutral-800 dark:text-gray-200 prose prose-sm dark:prose-invert max-w-none">
+                           {/* FIX: Provide the required 'onContentUpdate' prop and omit the optional 'setCodeForPreview' prop. */}
                            <MarkdownRenderer content={aiHelp} onContentUpdate={() => {}} />
                         </div>
                     )}
@@ -128,7 +129,7 @@ const DevConsole: React.FC<DevConsoleProps> = ({ isOpen, onClose }) => {
     return (
         <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} aria-hidden="true">
             <div
-                className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-dark-sheet rounded-t-2xl shadow-2xl transition-transform duration-300 ease-in-out translate-y-0 h-[60vh] flex flex-col"
+                className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#1e1f22] rounded-t-2xl shadow-2xl transition-transform duration-300 ease-in-out translate-y-0 h-[60vh] flex flex-col"
                 role="dialog"
                 aria-modal="true"
                 onClick={(e) => e.stopPropagation()}

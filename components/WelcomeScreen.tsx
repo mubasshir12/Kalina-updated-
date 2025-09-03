@@ -75,7 +75,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectSuggestion }) => 
                 <button
                     key={index}
                     onClick={() => onSelectSuggestion(suggestion)}
-                    className="flex items-center gap-2.5 bg-white/70 dark:bg-dark-sheet/70 backdrop-blur-sm p-3 pl-4 pr-5 rounded-full hover:bg-neutral-100 dark:hover:bg-gray-800/50 transition-colors duration-200 border border-neutral-200 dark:border-gray-700 shadow-sm"
+                    className="flex items-center gap-2.5 bg-white/70 dark:bg-[#1e1f22]/70 backdrop-blur-sm p-3 pl-4 pr-5 rounded-full hover:bg-neutral-100 dark:hover:bg-gray-800/50 transition-colors duration-200 border border-neutral-200 dark:border-gray-700 shadow-sm"
                     aria-label={suggestion.text}
                 >
                     {suggestion.icon}
@@ -84,7 +84,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectSuggestion }) => 
             ))}
             <button
               onClick={refreshSuggestions}
-              className="bg-white/70 dark:bg-dark-sheet/70 backdrop-blur-sm p-3 px-5 rounded-full hover:bg-neutral-100 dark:hover:bg-gray-800/50 transition-colors duration-200 border border-neutral-200 dark:border-gray-700 shadow-sm"
+              className="bg-white/70 dark:bg-[#1e1f22]/70 backdrop-blur-sm p-3 px-5 rounded-full hover:bg-neutral-100 dark:hover:bg-gray-800/50 transition-colors duration-200 border border-neutral-200 dark:border-gray-700 shadow-sm"
               aria-label="Show more suggestions"
             >
                 <span className="font-medium text-neutral-700 dark:text-gray-300">More</span>

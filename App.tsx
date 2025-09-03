@@ -1,9 +1,4 @@
 
-
-
-
-
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Suggestion, Tool, ChatModel, ModelInfo, View, ConsoleMode } from './types';
 import { initializeAiClient } from './services/aiClient';
@@ -27,6 +22,7 @@ import ConsoleToggleButton from './components/ConsoleToggleButton';
 import { useDebug } from './contexts/DebugContext';
 import ParticleUniverse from './components/ParticleUniverse';
 import Globe from './components/Globe';
+import ImageModal from './components/ImageModal';
 import CodePreviewModal from './components/CodePreviewModal';
 
 const models: ModelInfo[] = [
@@ -66,12 +62,11 @@ const App: React.FC = () => {
         }
     });
     const [isDarkMode, setIsDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
-    const [codePreview, setCodePreview] = useState<{
-        code: string;
-        language: string;
-        messageId: string;
-        originalCode: string;
-    } | null>(null);
+    
+    // State for modals lifted from child components
+    const [modalImage, setModalImage] = useState<string | null>(null);
+    const [imageToDownload, setImageToDownload] = useState<string | null>(null);
+    const [codeForPreview, setCodeForPreview] = useState<{ code: string; language: string; onFix: (newCode: string) => void; } | null>(null);
 
     // Dev Console State
     const { logs } = useDebug();
@@ -302,102 +297,113 @@ const App: React.FC = () => {
             output: prev.output + tokens.output,
         }));
     }, []);
+    
+    const handleConfirmDownload = () => {
+        if (!imageToDownload) return;
+        const imageUrl = `data:image/png;base64,${imageToDownload}`;
+        const link = document.createElement('a');
+        link.href = imageUrl;
+        link.download = `kalina-ai-${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setImageToDownload(null);
+    };
 
     const showConsoleToggleButton = consoleMode === 'manual' || (consoleMode === 'auto' && logs.length > 0);
 
-    const handleOpenCodePreview = useCallback((code: string, language: string, messageId: string, originalCode: string) => {
-        setCodePreview({ code, language, messageId, originalCode });
-    }, []);
-
-    const handleCodeFixed = useCallback((newCode: string) => {
-        if (!codePreview || !activeConversation) return;
-
-        const message = activeConversation.messages.find(m => m.id === codePreview.messageId);
-        if (!message) {
-            setCodePreview(null);
-            return;
-        }
-
-        const oldCodeBlock = `\`\`\`${codePreview.language}\n${codePreview.originalCode}\n\`\`\``;
-        const newCodeBlock = `\`\`\`${codePreview.language}\n${newCode}\n\`\`\``;
-        
-        const newContent = message.content.replace(oldCodeBlock, newCodeBlock);
-
-        handleUpdateMessageContent(codePreview.messageId, newContent);
-        setCodePreview(null);
-    }, [codePreview, activeConversation, handleUpdateMessageContent]);
-
     return (
-        <div className="relative flex flex-col h-[100dvh] bg-light-bg dark:bg-transparent text-neutral-800 dark:text-white transition-colors duration-300">
-            <div className="absolute inset-0 z-0">
-                {isDarkMode ? <ParticleUniverse /> : <Globe />}
-            </div>
-
-            <Header
-                onShowGallery={() => setCurrentView('gallery')}
-                onShowMemory={() => setCurrentView('memory')}
-                onShowUsage={() => setCurrentView('usage')}
-                isChatView={currentView === 'chat'}
-                consoleMode={consoleMode}
-                setConsoleMode={setConsoleMode}
-            />
-
-            <ViewRenderer
-                currentView={currentView}
-                showWelcomeScreen={showWelcomeScreen}
-                activeConversation={activeConversation}
-                conversations={conversationManager.conversations}
-                isLoading={chatHandler.isLoading}
-                isThinking={chatHandler.isThinking}
-                isSearchingWeb={chatHandler.isSearchingWeb}
-                speakingMessageId={speakingMessageId}
-                allGeneratedImages={allGeneratedImages}
-                ltm={ltm}
-                translatorUsage={translatorUsage}
-                handleRetry={handleRetry}
-                handleEditMessage={handleEditMessage}
-                handleUpdateMessageContent={handleUpdateMessageContent}
-                handleToggleAudio={handleToggleAudio}
-                handleSelectSuggestion={handleSelectSuggestion}
-                handleCancelStream={handleCancelStream}
-                setCurrentView={setCurrentView}
-                setAllGeneratedImages={setAllGeneratedImages}
-                setLtm={setLtm}
-                scrollContainerRef={scrollContainerRef}
-                onCloseTranslator={() => {
-                    setSelectedTool('smart');
-                    setCurrentView('chat');
-                }}
-                onTranslationComplete={handleTranslationComplete}
-                onOpenCodePreview={handleOpenCodePreview}
-            />
-
-            {currentView === 'chat' && (
-                <div className="relative z-20 p-4 md:p-6 bg-white/5 dark:bg-black/5 backdrop-blur-sm border-t border-neutral-200/50 dark:border-white/10 rounded-tl-3xl rounded-tr-3xl">
-                    <div className="max-w-4xl mx-auto relative">
-                        {selectedTool === 'imageGeneration' && <ImagePromptSuggestions onSelectPrompt={(p) => handleSendMessageWrapper(p)} />}
-                        
-                        <ChatInput
-                            onSendMessage={handleSendMessageWrapper}
-                            isLoading={chatHandler.isLoading}
-                            elapsedTime={elapsedTime}
-                            selectedTool={selectedTool}
-                            onToolChange={handleToolChange}
-                            activeSuggestion={activeSuggestion}
-                            onClearSuggestion={() => setActiveSuggestion(null)}
-                            onOpenHistory={() => setIsHistorySheetOpen(true)}
-                            conversationCount={conversationManager.conversations.length}
-                            onCancelStream={() => setIsStopConfirmOpen(true)}
-                            models={models}
-                            selectedChatModel={selectedChatModel}
-                            onSelectChatModel={setSelectedChatModel}
-                            apiKey={apiKey}
-                            onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
-                        />
-                    </div>
+        <>
+            <div className="relative flex flex-col h-[100dvh] bg-[#F9F6F2] dark:bg-transparent text-neutral-800 dark:text-white transition-colors duration-300">
+                <div className="absolute inset-0 z-0">
+                    {isDarkMode ? <ParticleUniverse /> : <Globe />}
                 </div>
-            )}
 
+                <Header
+                    onShowGallery={() => setCurrentView('gallery')}
+                    onShowMemory={() => setCurrentView('memory')}
+                    onShowUsage={() => setCurrentView('usage')}
+                    isChatView={currentView === 'chat'}
+                    consoleMode={consoleMode}
+                    setConsoleMode={setConsoleMode}
+                />
+
+                <ViewRenderer
+                    currentView={currentView}
+                    showWelcomeScreen={showWelcomeScreen}
+                    activeConversation={activeConversation}
+                    conversations={conversationManager.conversations}
+                    isLoading={chatHandler.isLoading}
+                    isThinking={chatHandler.isThinking}
+                    isSearchingWeb={chatHandler.isSearchingWeb}
+                    speakingMessageId={speakingMessageId}
+                    allGeneratedImages={allGeneratedImages}
+                    ltm={ltm}
+                    translatorUsage={translatorUsage}
+                    handleRetry={handleRetry}
+                    handleEditMessage={handleEditMessage}
+                    handleUpdateMessageContent={handleUpdateMessageContent}
+                    handleToggleAudio={handleToggleAudio}
+                    handleSelectSuggestion={handleSelectSuggestion}
+                    handleCancelStream={handleCancelStream}
+                    setCurrentView={setCurrentView}
+                    setAllGeneratedImages={setAllGeneratedImages}
+                    setLtm={setLtm}
+                    scrollContainerRef={scrollContainerRef}
+                    onCloseTranslator={() => {
+                        setSelectedTool('smart');
+                        setCurrentView('chat');
+                    }}
+                    onTranslationComplete={handleTranslationComplete}
+                    setModalImage={setModalImage}
+                    setImageToDownload={setImageToDownload}
+                    setCodeForPreview={setCodeForPreview}
+                />
+
+                {currentView === 'chat' && (
+                    <div className="relative z-20 p-4 md:p-6 bg-white/5 dark:bg-black/5 backdrop-blur-sm border-t border-neutral-200/50 dark:border-white/10 rounded-tl-3xl rounded-tr-3xl">
+                        <div className="max-w-4xl mx-auto relative">
+                            {selectedTool === 'imageGeneration' && <ImagePromptSuggestions onSelectPrompt={(p) => handleSendMessageWrapper(p)} />}
+                            
+                            <ChatInput
+                                onSendMessage={handleSendMessageWrapper}
+                                isLoading={chatHandler.isLoading}
+                                elapsedTime={elapsedTime}
+                                selectedTool={selectedTool}
+                                onToolChange={handleToolChange}
+                                activeSuggestion={activeSuggestion}
+                                onClearSuggestion={() => setActiveSuggestion(null)}
+                                onOpenHistory={() => setIsHistorySheetOpen(true)}
+                                conversationCount={conversationManager.conversations.length}
+                                onCancelStream={() => setIsStopConfirmOpen(true)}
+                                models={models}
+                                selectedChatModel={selectedChatModel}
+                                onSelectChatModel={setSelectedChatModel}
+                                apiKey={apiKey}
+                                onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
+                            />
+                        </div>
+                    </div>
+                )}
+                
+                {IS_DEV_CONSOLE_ENABLED && (
+                    <>
+                        {showConsoleToggleButton && (
+                            <ConsoleToggleButton
+                                onClick={() => setIsConsoleOpen(prev => !prev)}
+                                errorCount={logs.length}
+                            />
+                        )}
+                        <DevConsole
+                            isOpen={isConsoleOpen}
+                            onClose={() => setIsConsoleOpen(false)}
+                            mode={consoleMode}
+                        />
+                    </>
+                )}
+            </div>
+            
+            {/* Modals are rendered here, outside the main scrolling container */}
             <ModelSwitchModal
                 isOpen={isModelSwitchModalOpen}
                 onClose={() => {
@@ -441,32 +447,27 @@ const App: React.FC = () => {
                 confirmButtonText="Stop"
                 confirmButtonVariant="danger"
             />
+            
+            {modalImage && <ImageModal imageUrl={modalImage} onClose={() => setModalImage(null)} />}
+            
+            <ConfirmationModal
+                isOpen={imageToDownload !== null}
+                onClose={() => setImageToDownload(null)}
+                onConfirm={handleConfirmDownload}
+                title="Confirm Download"
+                message="Do you want to download this image?"
+                confirmButtonText="Download"
+            />
 
-            {codePreview && (
+            {codeForPreview && (
                 <CodePreviewModal
-                    initialCode={codePreview.code}
-                    language={codePreview.language}
-                    onClose={() => setCodePreview(null)}
-                    onCodeFixed={handleCodeFixed}
+                    initialCode={codeForPreview.code}
+                    language={codeForPreview.language}
+                    onClose={() => setCodeForPreview(null)}
+                    onCodeFixed={codeForPreview.onFix}
                 />
             )}
-            
-            {IS_DEV_CONSOLE_ENABLED && (
-                <>
-                    {showConsoleToggleButton && (
-                        <ConsoleToggleButton
-                            onClick={() => setIsConsoleOpen(prev => !prev)}
-                            errorCount={logs.length}
-                        />
-                    )}
-                    <DevConsole
-                        isOpen={isConsoleOpen}
-                        onClose={() => setIsConsoleOpen(false)}
-                        mode={consoleMode}
-                    />
-                </>
-            )}
-        </div>
+        </>
     );
 };
 

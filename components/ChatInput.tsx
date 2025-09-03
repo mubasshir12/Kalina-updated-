@@ -263,7 +263,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
               <div className="relative" ref={toolsMenuRef}>
                    <button 
                       onClick={() => setIsToolsOpen(!isToolsOpen)}
-                      className="flex items-center gap-3 px-3 py-2 text-neutral-700 dark:text-gray-300 bg-neutral-100 dark:bg-dark-menu border border-neutral-300 dark:border-gray-600 rounded-xl hover:bg-neutral-200 dark:hover:bg-gray-700/70 transition-colors h-full"
+                      className="flex items-center gap-3 px-3 py-2 text-neutral-700 dark:text-gray-300 bg-neutral-100 dark:bg-[#2E2F33] border border-neutral-300 dark:border-gray-600 rounded-xl hover:bg-neutral-200 dark:hover:bg-gray-700/70 transition-colors h-full"
                    >
                       <SelectedIcon className="h-5 w-5 text-amber-500 dark:text-amber-400 flex-shrink-0" />
                        <div className="text-left">
@@ -273,7 +273,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                       <ChevronDown className={`w-4 h-4 transition-transform ${isToolsOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {isToolsOpen && (
-                      <div className="absolute bottom-full mb-2 w-72 bg-white dark:bg-dark-menu border border-neutral-200 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden z-20">
+                      <div className="absolute bottom-full mb-2 w-72 bg-white dark:bg-[#2E2F33] border border-neutral-200 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden z-20">
                          {tools.map(tool => {
                              const ToolIcon = tool.icon;
                              return (
@@ -296,7 +296,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
               <div className="relative">
                 <button
                   onClick={onOpenHistory}
-                  className="p-3 bg-neutral-100 dark:bg-dark-menu border border-neutral-300 dark:border-gray-600 rounded-xl text-neutral-700 dark:text-gray-300 hover:bg-neutral-200 dark:hover:bg-gray-700/70 transition-colors h-full"
+                  className="p-3 bg-neutral-100 dark:bg-[#2E2F33] border border-neutral-300 dark:border-gray-600 rounded-xl text-neutral-700 dark:text-gray-300 hover:bg-neutral-200 dark:hover:bg-gray-700/70 transition-colors h-full"
                   aria-label="Open chat history"
                   title="History"
                 >
@@ -333,7 +333,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                     value={urlInput}
                     onChange={(e) => setUrlInput(e.target.value)}
                     placeholder="Enter a URL to read..."
-                    className="w-full bg-neutral-100 dark:bg-dark-menu border border-neutral-300 dark:border-gray-600 rounded-lg py-2.5 pl-4 pr-12 focus:outline-none focus:ring-2 focus:ring-amber-500 text-neutral-800 dark:text-gray-200"
+                    className="w-full bg-neutral-100 dark:bg-[#2E2F33] border border-neutral-300 dark:border-gray-600 rounded-lg py-2.5 pl-4 pr-12 focus:outline-none focus:ring-2 focus:ring-amber-500 text-neutral-800 dark:text-gray-200"
                     disabled={isLoading}
                 />
                 <button
@@ -349,7 +349,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
           <div 
             onClick={handleContainerClick}
-            className="bg-neutral-200 dark:bg-dark-input rounded-t-3xl rounded-b-3xl px-3 pt-4 pb-3 flex flex-col justify-between min-h-[5rem] cursor-text"
+            className="bg-neutral-200 dark:bg-[#202123] rounded-t-3xl rounded-b-3xl px-3 pt-4 pb-3 flex flex-col justify-between min-h-[5rem] cursor-text"
           >
             <div className="flex-1">
                  <textarea
@@ -377,7 +377,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                                 <Paperclip className="h-6 w-6" />
                             </button>
                             {isAttachmentMenuOpen && (
-                              <div className="absolute bottom-full mb-2 w-48 bg-white dark:bg-dark-menu border border-neutral-200 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden">
+                              <div className="absolute bottom-full mb-2 w-48 bg-white dark:bg-[#2E2F33] border border-neutral-200 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden">
                                   <button onClick={() => handleTriggerInput(cameraInputRef)} className="w-full flex items-center gap-3 p-2.5 text-sm text-neutral-700 dark:text-gray-300 hover:bg-neutral-100 dark:hover:bg-gray-700/70 transition-colors">
                                       <Camera className="w-4 h-4" /> Take Photo
                                   </button>

@@ -6,20 +6,9 @@
     <title>Kalina AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      // Enable class-based dark mode and define custom theme colors
+      // Enable class-based dark mode
       tailwind.config = {
         darkMode: 'class',
-        theme: {
-          extend: {
-            colors: {
-              'light-bg': '#F9F6F2',
-              'dark-bg': '#131314',
-              'dark-sheet': '#1e1f22',
-              'dark-input': '#202123',
-              'dark-menu': '#2E2F33',
-            }
-          }
-        }
       }
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -71,19 +60,6 @@
       .image-reveal-container.is-loaded {
         /* Reveals the image by setting all insets to 0 */
         clip-path: inset(0 0 0 0);
-      }
-      @keyframes messageFadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(10px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-      .space-y-6 > * {
-        animation: messageFadeIn 0.5s ease-out forwards;
       }
     </style>
     <script>

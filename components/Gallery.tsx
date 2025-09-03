@@ -36,7 +36,7 @@ const Gallery: React.FC<GalleryProps> = ({ images, onBack, onDeleteImage }) => {
     if (images.length === 0) {
         return (
             <main className="relative z-10 flex-1 flex flex-col items-center justify-center p-4 md:p-6 text-center">
-                <div className="bg-white/80 dark:bg-dark-sheet/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg border border-neutral-200 dark:border-gray-700 max-w-md">
+                <div className="bg-white/80 dark:bg-[#1e1f22]/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg border border-neutral-200 dark:border-gray-700 max-w-md">
                     <ImageOff className="h-16 w-16 text-neutral-400 dark:text-gray-500 mb-4 mx-auto" />
                     <h2 className="text-2xl font-semibold text-neutral-800 dark:text-gray-200">Your Gallery is Empty</h2>
                     <p className="mt-2 text-neutral-500 dark:text-gray-400">

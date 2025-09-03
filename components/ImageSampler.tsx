@@ -49,7 +49,7 @@ const ImageSampler: React.FC<ImageSamplerProps> = ({ onSelectImage }) => {
                 <button
                     key={image.id}
                     onClick={() => onSelectImage(image.src)}
-                    className="flex-shrink-0 w-14 h-14 rounded-md overflow-hidden group focus:outline-none focus:ring-2 focus:ring-indigo-500 ring-offset-2 dark:ring-offset-dark-bg"
+                    className="flex-shrink-0 w-14 h-14 rounded-md overflow-hidden group focus:outline-none focus:ring-2 focus:ring-indigo-500 ring-offset-2 dark:ring-offset-[#131314]"
                     title={image.id} // The prompt is used as a tooltip
                 >
                     <img
