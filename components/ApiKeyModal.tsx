@@ -33,7 +33,7 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onSetApiKey, onClose,
   }
 
   return (
-    <div className="fixed inset-0 bg-white dark:bg-[#131314] flex items-center justify-center z-50 p-4" onClick={!currentApiKey ? undefined : onClose}>
+    <div className="fixed inset-0 bg-[#F9F6F2] dark:bg-[#131314] flex items-center justify-center z-50 p-4" onClick={!currentApiKey ? undefined : onClose}>
       <div className="w-full max-w-md bg-white dark:bg-[#1e1f22] rounded-2xl shadow-xl p-8 space-y-6" onClick={(e) => e.stopPropagation()}>
         <div className="text-center">
             <h1 className="text-2xl font-bold text-neutral-800 dark:text-gray-200">{currentApiKey ? 'Update' : 'Enter'} Your API Key</h1>

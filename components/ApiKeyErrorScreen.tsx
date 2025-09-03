@@ -3,7 +3,7 @@ import { AlertTriangle } from 'lucide-react';
 
 const ApiKeyErrorScreen: React.FC = () => {
   return (
-    <div className="flex flex-col h-screen bg-white dark:bg-[#131314] text-neutral-800 dark:text-white items-center justify-center p-4 text-center">
+    <div className="flex flex-col h-screen bg-[#F9F6F2] dark:bg-[#131314] text-neutral-800 dark:text-white items-center justify-center p-4 text-center">
       <div className="max-w-md">
         <AlertTriangle className="h-16 w-16 text-red-500 mx-auto mb-4" />
         <h1 className="text-2xl font-bold text-neutral-800 dark:text-gray-200">API Key Not Configured</h1>

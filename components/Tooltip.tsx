@@ -14,7 +14,7 @@ const Tooltip: React.FC<TooltipProps> = ({ content, children, position = 'top', 
     return (
         <div className="relative group flex items-center">
             {children}
-            <div className={`absolute ${positionClass} ${alignClass} bg-gray-900 dark:bg-black text-white text-xs rounded-md py-1.5 px-3 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 shadow-lg ${className}`}>
+            <div className={`absolute ${positionClass} ${alignClass} bg-gray-900 dark:bg-black text-white text-xs rounded-md py-1.5 px-3 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 shadow-lg whitespace-nowrap ${className}`}>
                 {content}
             </div>
         </div>
