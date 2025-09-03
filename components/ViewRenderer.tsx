@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Conversation, LTM, Suggestion, View } from '../types';
 import ChatHistory from './ChatHistory';
@@ -9,7 +10,6 @@ import MemoryManagement from './MemoryManagement';
 import ConversationNavigator from './ConversationNavigator';
 import TranslatorView from './Translator';
 import UsageStatsView from './UsageStatsView';
-import TransparencyView from './TransparencyView';
 
 interface ViewRendererProps {
     currentView: View;
@@ -35,6 +35,7 @@ interface ViewRendererProps {
     scrollContainerRef: React.RefObject<HTMLDivElement>;
     onCloseTranslator: () => void;
     onTranslationComplete: (tokens: { input: number; output: number }) => void;
+    onOpenCodePreview: (code: string, language: string, messageId: string, originalCode: string) => void;
 }
 
 const ViewRenderer: React.FC<ViewRendererProps> = ({
@@ -61,6 +62,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
     scrollContainerRef,
     onCloseTranslator,
     onTranslationComplete,
+    onOpenCodePreview,
 }) => {
     const [activeMessageIndex, setActiveMessageIndex] = useState<number | null>(null);
 
@@ -136,20 +138,18 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
             return <TranslatorView onBack={onCloseTranslator} onTranslationComplete={onTranslationComplete} />;
         case 'usage':
             return <UsageStatsView conversations={conversations} onBack={() => setCurrentView('chat')} translatorUsage={translatorUsage} />;
-        case 'transparency':
-            return <TransparencyView onBack={() => setCurrentView('chat')} />;
         case 'chat':
         default:
             const showNavigators = !showWelcomeScreen && activeConversation && userMessageIndices.length > 1;
             return (
-                <main className="flex-1 flex flex-col overflow-hidden">
+                <main className="relative z-10 flex-1 flex flex-col overflow-hidden">
                     <div className="flex-1 relative">
                         <div ref={scrollContainerRef} className="absolute inset-0 overflow-y-auto">
                            {showWelcomeScreen ? (
                                 <WelcomeScreen onSelectSuggestion={handleSelectSuggestion} />
                             ) : (
                                 <div className="p-4 md:p-6">
-                                    <div className="max-w-4xl mx-auto h-full">
+                                    <div className="max-w-4xl mx-auto">
                                         {activeConversation && (
                                             <ChatHistory
                                                 messages={activeConversation.messages}
@@ -163,6 +163,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
                                                 onToggleAudio={handleToggleAudio}
                                                 onCancelStream={handleCancelStream}
                                                 scrollContainerRef={scrollContainerRef}
+                                                onOpenCodePreview={onOpenCodePreview}
                                             />
                                         )}
                                     </div>

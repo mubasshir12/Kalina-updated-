@@ -18,36 +18,21 @@ const globeCss = `
 }
 `;
 
-const vertexShader = `
-    varying vec3 vNormal;
-    void main() {
-        vNormal = normalize( normalMatrix * normal );
-        gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
-    }
-`;
-const fragmentShader = `
-    varying vec3 vNormal;
-    void main() {
-        float intensity = pow( 0.6 - dot( vNormal, vec3( 0.0, 0.0, 1.0 ) ), 2.0 );
-        gl_FragColor = vec4( 0.3, 0.6, 1.0, 1.0 ) * intensity;
-    }
-`;
-
-
-const Globe: React.FC = () => {
+const CustomGlobe: React.FC = () => {
     const mountRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const currentMount = mountRef.current;
         if (!currentMount) return;
 
-        let scene: THREE.Scene, camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer, stars: THREE.Mesh, controls: OrbitControls;
+        let scene: THREE.Scene, camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer, controls: OrbitControls;
         let animationFrameId: number;
+        const satellites: THREE.Mesh[] = [];
 
         function init() {
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(75, currentMount.clientWidth / currentMount.clientHeight, 0.1, 1000);
-            camera.position.z = 12; // Adjusted camera position to be closer
+            camera.position.z = 15;
 
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(currentMount.clientWidth, currentMount.clientHeight);
@@ -55,46 +40,80 @@ const Globe: React.FC = () => {
             renderer.domElement.className = 'globe-canvas';
             currentMount.appendChild(renderer.domElement);
             
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+            // Soft, even lighting to prevent dark spots
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
             scene.add(ambientLight);
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
-            directionalLight.position.set(5, 3, 5);
-            scene.add(directionalLight);
+            const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xcccccc, 1);
+            scene.add(hemisphereLight);
 
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
-            controls.minDistance = 11;
-            controls.maxDistance = 20;
             controls.enablePan = false;
-            controls.enableZoom = false; // Disable zoom to maintain the background effect
-            controls.autoRotate = true; // Add a gentle auto-rotation
-            controls.autoRotateSpeed = 0.3;
+            controls.enableZoom = false;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.5;
+            controls.minDistance = 12;
+            controls.maxDistance = 20;
 
             const clock = new THREE.Clock();
 
-            const textureLoader = new THREE.TextureLoader();
-
-            const starGeometry = new THREE.SphereGeometry(500, 64, 64);
-            const starMaterial = new THREE.MeshBasicMaterial({ map: textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/starry-night-sky.jpg'), side: THREE.BackSide });
-            stars = new THREE.Mesh(starGeometry, starMaterial);
-            scene.add(stars);
-
-            const globeGeometry = new THREE.SphereGeometry(10, 64, 64);
-            const globeMaterial = new THREE.MeshPhongMaterial({
-                map: textureLoader.load('https://raw.githubusercontent.com/turban/webgl-earth/master/images/2_no_clouds_4k.jpg'),
-                bumpMap: textureLoader.load('https://raw.githubusercontent.com/turban/webgl-earth/master/images/elev_bump_4k.jpg'),
-                bumpScale: 0.05,
-                specularMap: textureLoader.load('https://raw.githubusercontent.com/turban/webgl-earth/master/images/water_4k.png'),
-                specular: new THREE.Color('grey')
+            // Stylized Globe
+            const globeGeometry = new THREE.IcosahedronGeometry(10, 3);
+            const globeMaterial = new THREE.MeshStandardMaterial({
+                color: 0xe0e0ff,
+                flatShading: true,
             });
             const globe = new THREE.Mesh(globeGeometry, globeMaterial);
             scene.add(globe);
+            
+            // Wireframe Overlay
+            const wireframeMaterial = new THREE.MeshBasicMaterial({
+                color: 0xd97706, // Amber-600 to match theme
+                wireframe: true,
+                transparent: true,
+                opacity: 0.15,
+            });
+            const wireframe = new THREE.Mesh(globeGeometry, wireframeMaterial);
+            wireframe.scale.set(1.001, 1.001, 1.001); // Slightly larger to avoid z-fighting
+            scene.add(wireframe);
 
-            const atmosphereGeometry = new THREE.SphereGeometry(10, 64, 64);
-            const atmosphereMaterial = new THREE.ShaderMaterial({ vertexShader, fragmentShader, blending: THREE.AdditiveBlending, side: THREE.BackSide });
-            const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
-            atmosphere.scale.set(1.1, 1.1, 1.1);
-            scene.add(atmosphere);
+            // Orbiting Satellites
+            for (let i = 0; i < 3; i++) {
+                const satGeometry = new THREE.SphereGeometry(0.15, 8, 8);
+                const satMaterial = new THREE.MeshBasicMaterial({ color: 0x818cf8 }); // Lighter Indigo
+                const satellite = new THREE.Mesh(satGeometry, satMaterial);
+                
+                const pivot = new THREE.Object3D();
+                pivot.add(satellite);
+                scene.add(pivot);
+
+                const distance = 11 + i * 0.5;
+                satellite.position.set(distance, 0, 0);
+
+                // Randomize orbit plane
+                pivot.rotation.x = Math.random() * Math.PI;
+                pivot.rotation.y = Math.random() * Math.PI;
+                
+                satellites.push(pivot as unknown as THREE.Mesh);
+            }
+            
+            // Background Stars
+            const starVertices = [];
+            for (let i = 0; i < 2000; i++) {
+                const x = (Math.random() - 0.5) * 2000;
+                const y = (Math.random() - 0.5) * 2000;
+                const z = (Math.random() - 0.5) * 2000;
+                const dist = Math.sqrt(x*x + y*y + z*z);
+                if (dist > 100) { // Only add stars far enough away
+                    starVertices.push(x, y, z);
+                }
+            }
+            const starGeometry = new THREE.BufferGeometry();
+            starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+            const starMaterial = new THREE.PointsMaterial({ color: 0xaaaaaa, size: 0.3 });
+            const stars = new THREE.Points(starGeometry, starMaterial);
+            scene.add(stars);
+
 
             window.addEventListener('resize', onWindowResize);
 
@@ -104,13 +123,13 @@ const Globe: React.FC = () => {
                 animationFrameId = requestAnimationFrame(animate);
                 
                 const elapsedTime = clock.getElapsedTime();
-                // Increased speed for more noticeable sun movement
-                directionalLight.position.x = Math.sin(elapsedTime * 0.2) * 10;
-                directionalLight.position.z = Math.cos(elapsedTime * 0.2) * 10;
-                directionalLight.position.y = 3 + Math.sin(elapsedTime * 0.1) * 2;
+                
+                // Animate satellites
+                satellites.forEach((sat, i) => {
+                    sat.rotation.y += 0.005 * (i + 1);
+                });
                 
                 controls.update();
-                stars.rotation.y += 0.0001;
                 renderer.render(scene, camera);
             }
         }
@@ -127,9 +146,10 @@ const Globe: React.FC = () => {
         return () => {
             cancelAnimationFrame(animationFrameId);
             window.removeEventListener('resize', onWindowResize);
-            controls?.dispose();
+            // FIX: The type definitions for OrbitControls might be missing the dispose method. Casting to 'any' to call it.
+            (controls as any)?.dispose();
             scene.traverse(object => {
-                if (object instanceof THREE.Mesh) {
+                if (object instanceof THREE.Mesh || object instanceof THREE.Points) {
                     object.geometry.dispose();
                     const material = object.material as THREE.Material | THREE.Material[];
                     if(Array.isArray(material)) {
@@ -155,4 +175,4 @@ const Globe: React.FC = () => {
     );
 };
 
-export default Globe;
+export default CustomGlobe;

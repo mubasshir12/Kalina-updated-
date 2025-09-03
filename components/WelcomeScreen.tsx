@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Wand2, Lightbulb, BarChart3, Code2, BugPlay, DatabaseZap, HelpCircle } from 'lucide-react';
 import { Suggestion } from '../types';
-import ParticleUniverse from './ParticleUniverse';
 
 interface WelcomeScreenProps {
   onSelectSuggestion: (suggestion: Suggestion) => void;
@@ -65,10 +64,9 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectSuggestion }) => 
 
   return (
     <div className="relative flex flex-col items-center justify-center h-full text-center overflow-hidden">
-      <ParticleUniverse />
       <div className="relative z-10 w-full px-4">
           <div className="mb-12">
-            <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-800 dark:text-gray-200">
+            <h1 className="text-4xl md:text-5xl font-serif font-bold bg-gradient-to-br from-amber-600 to-orange-600 dark:from-amber-400 dark:to-orange-500 bg-clip-text text-transparent select-none">
                 What can I help with?
             </h1>
           </div>
@@ -77,19 +75,19 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectSuggestion }) => 
                 <button
                     key={index}
                     onClick={() => onSelectSuggestion(suggestion)}
-                    className="flex items-center gap-2.5 bg-white/70 dark:bg-[#1e1f22]/70 backdrop-blur-sm p-3 pl-4 pr-5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors duration-200 border border-gray-200 dark:border-gray-700 shadow-sm"
+                    className="flex items-center gap-2.5 bg-white/70 dark:bg-[#1e1f22]/70 backdrop-blur-sm p-3 pl-4 pr-5 rounded-full hover:bg-neutral-100 dark:hover:bg-gray-800/50 transition-colors duration-200 border border-neutral-200 dark:border-gray-700 shadow-sm"
                     aria-label={suggestion.text}
                 >
                     {suggestion.icon}
-                    <span className="font-medium text-gray-700 dark:text-gray-300">{suggestion.text}</span>
+                    <span className="font-medium text-neutral-700 dark:text-gray-300">{suggestion.text}</span>
                 </button>
             ))}
             <button
               onClick={refreshSuggestions}
-              className="bg-white/70 dark:bg-[#1e1f22]/70 backdrop-blur-sm p-3 px-5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors duration-200 border border-gray-200 dark:border-gray-700 shadow-sm"
+              className="bg-white/70 dark:bg-[#1e1f22]/70 backdrop-blur-sm p-3 px-5 rounded-full hover:bg-neutral-100 dark:hover:bg-gray-800/50 transition-colors duration-200 border border-neutral-200 dark:border-gray-700 shadow-sm"
               aria-label="Show more suggestions"
             >
-                <span className="font-medium text-gray-700 dark:text-gray-300">More</span>
+                <span className="font-medium text-neutral-700 dark:text-gray-300">More</span>
             </button>
           </div>
         </div>

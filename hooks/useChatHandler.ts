@@ -1,5 +1,7 @@
 
 
+
+
 import React, { useState, useRef, useCallback } from 'react';
 import { Content, Part } from '@google/ai';
 import { ChatMessage as ChatMessageType, Suggestion, ChatModel, LTM, CodeSnippet, GroundingChunk, UserProfile } from '../types';
@@ -12,7 +14,10 @@ import { processAndSaveCode, findRelevantCode } from '../services/codeService';
 import * as urlReaderService from '../services/urlReaderService';
 import { ImageGenerationOptions } from '../components/ImageOptionsModal';
 import { getFriendlyErrorMessage } from '../utils/errorUtils';
-import { logDev } from '../services/loggingService';
+import { useDebug } from '../contexts/DebugContext';
+import { developerProfile } from '../services/developerProfile';
+import { getPersonaContext } from '../services/personaService';
+import { getCapabilitiesContext } from '../services/capabilitiesService';
 
 const models = [
     { id: 'gemini-2.5-flash', name: 'Kalina 2.5 Flash' },
@@ -81,6 +86,7 @@ export const useChatHandler = ({
     const isCancelledRef = useRef(false);
     const responseTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const responseStartTimeRef = useRef(0);
+    const { logError } = useDebug();
 
 
     const clearThinkingIntervals = useCallback(() => {
@@ -122,22 +128,42 @@ export const useChatHandler = ({
         try {
             const { images: generatedImagesBase64 } = await generateImage(imageGenerationPrompt, options.count, options.aspectRatio);
             setAllGeneratedImages(prev => [...prev, ...generatedImagesBase64]);
+
+            // Step 1: Update to show "Generated" text
             updateConversationMessages(activeConversationId, prev => {
                 const newMessages = [...prev];
                 const lastMessageIndex = newMessages.length - 1;
                 newMessages[lastMessageIndex] = {
                     ...newMessages[lastMessageIndex],
-                    isGeneratingImage: false,
+                    isGeneratingImage: true,
+                    generationComplete: true,
                     generatedImagesBase64: generatedImagesBase64,
                 };
                 return newMessages;
             });
 
+            // Step 2: After a delay, switch to revealing the image
+            setTimeout(() => {
+                if (isCancelledRef.current) return;
+                updateConversationMessages(activeConversationId, prev => {
+                    const newMessages = [...prev];
+                    const lastMessageIndex = newMessages.length - 1;
+                    if (newMessages[lastMessageIndex]?.generationComplete) {
+                        newMessages[lastMessageIndex] = {
+                            ...newMessages[lastMessageIndex],
+                            isGeneratingImage: false,
+                        };
+                    }
+                    return newMessages;
+                });
+            }, 400);
+
+
             if (shouldGenerateTitle) {
                 updateConversation(activeConversationId, c => ({ ...c, title: "Image Generation" }));
             }
         } catch (e: any) {
-            logDev('error', 'Error in handleExecuteImageGeneration:', e);
+            logError(e);
             const friendlyError = getFriendlyErrorMessage(e);
             setError(friendlyError);
             updateConversationMessages(activeConversationId, prev => {
@@ -154,7 +180,7 @@ export const useChatHandler = ({
             setIsLoading(false);
             setImageGenerationPrompt('');
         }
-    }, [apiKey, imageGenerationPrompt, activeConversationId, conversations, updateConversation, updateConversationMessages, setAllGeneratedImages, setIsImageOptionsOpen, setIsLoading, setError]);
+    }, [apiKey, imageGenerationPrompt, activeConversationId, conversations, updateConversation, updateConversationMessages, setAllGeneratedImages, setIsImageOptionsOpen, setIsLoading, setError, logError]);
 
     const handleSendMessage = useCallback(async (prompt: string, image?: { base64: string; mimeType: string; }, file?: { base64: string; mimeType: string; name: string; size: number; }, overrideModel?: ChatModel, isRetry = false) => {
         const fullPrompt = prompt;
@@ -190,16 +216,7 @@ export const useChatHandler = ({
         const planningMessage: ChatMessageType = { id: crypto.randomUUID(), role: 'model', content: '', isPlanning: true, modelUsed: modelToUse };
         
         if (!isRetry) {
-            const newUserMessage: ChatMessageType = {
-                id: crypto.randomUUID(),
-                role: 'user',
-                content: fullPrompt,
-                image: image,
-                file: file,
-                modelUsed: modelToUse,
-                hasImage: !!image,
-                fileInfo: file ? { name: file.name, size: file.size, mimeType: file.mimeType } : undefined,
-            };
+            const newUserMessage: ChatMessageType = { id: crypto.randomUUID(), role: 'user', content: fullPrompt, image: image, file: file, modelUsed: modelToUse };
             updateConversationMessages(currentConversationId, prev => [...prev, newUserMessage, planningMessage]);
         } else {
             updateConversationMessages(currentConversationId, prev => [...prev, planningMessage]);
@@ -211,6 +228,18 @@ export const useChatHandler = ({
 
         try {
             const plan = await planResponse(fullPrompt, image, file, modelToUse);
+            let developerContext: string | undefined = undefined;
+            let personaContext: string | undefined = undefined;
+            let capabilitiesContext: string | undefined = undefined;
+
+            if (plan.isCreatorRequest) {
+                developerContext = `My developer is ${developerProfile.name}. He is a ${developerProfile.age}-year-old from ${developerProfile.location}, and ${developerProfile.role} of ${developerProfile.appName}.`;
+                personaContext = getPersonaContext();
+            }
+
+            if (plan.isCapabilitiesRequest) {
+                capabilitiesContext = getCapabilitiesContext();
+            }
 
             let isThinkingEnabled = plan.needsThinking;
             let isWebSearchEnabled = plan.needsWebSearch;
@@ -337,11 +366,38 @@ export const useChatHandler = ({
 
                 updateConversationMessages(currentConversationId, prev => {
                     const updated = [...prev];
-                    updated[updated.length - 1] = { ...updated[updated.length - 1], isEditingImage: false, content: result.textResponse, generatedImagesBase64: result.editedImageBase64 ? [result.editedImageBase64] : undefined, inputTokens: result.usageMetadata?.promptTokenCount, outputTokens: result.usageMetadata?.candidatesTokenCount };
+                    const lastMessage = updated[updated.length - 1];
+                    if (lastMessage?.isEditingImage) {
+                        updated[updated.length - 1] = {
+                            ...lastMessage,
+                            isEditingImage: true,
+                            generationComplete: true,
+                            content: result.textResponse,
+                            generatedImagesBase64: result.editedImageBase64 ? [result.editedImageBase64] : undefined,
+                            inputTokens: result.usageMetadata?.promptTokenCount,
+                            outputTokens: result.usageMetadata?.candidatesTokenCount
+                        };
+                    }
                     return updated;
                 });
+
                 if (result.editedImageBase64) setAllGeneratedImages(prev => [...prev, result.editedImageBase64!]);
-                setIsLoading(false);
+
+                setTimeout(() => {
+                    if (isCancelledRef.current) return;
+                    updateConversationMessages(currentConversationId, prev => {
+                        const updated = [...prev];
+                        const lastMessage = updated[updated.length - 1];
+                        if (lastMessage?.generationComplete) {
+                            updated[updated.length - 1] = {
+                                ...lastMessage,
+                                isEditingImage: false,
+                            };
+                        }
+                        return updated;
+                    });
+                }, 400);
+
                 return;
             } else if (isImageGeneration) {
                 updateConversationMessages(currentConversationId, prev => prev.slice(0, -1));
@@ -401,7 +457,7 @@ export const useChatHandler = ({
             }
 
             const modelName = models.find(m => m.id === modelToUse)?.name || 'Kalina AI';
-            const chat = startChatSession(modelToUse, isThinkingEnabled, isWebSearchEnabled, modelName, ltm, userProfile, isFirstTurnInConversation, transformMessagesToHistory(shortTermMemory), summary, retrievedCodeSnippets);
+            const chat = startChatSession(modelToUse, isThinkingEnabled, isWebSearchEnabled, modelName, ltm, userProfile, isFirstTurnInConversation, transformMessagesToHistory(shortTermMemory), summary, retrievedCodeSnippets, developerContext, personaContext, capabilitiesContext);
 
             const parts: Part[] = [
                 ...(image ? [{ inlineData: { data: image.base64, mimeType: image.mimeType } }] : []),
@@ -479,7 +535,6 @@ export const useChatHandler = ({
                 });
             }
 
-            // FIX: Calculate system tokens and add to the message to provide more detailed usage statistics.
             if (usageMetadata) {
                 updateConversationMessages(currentConversationId, prev => {
                     const lastMessage = prev[prev.length - 1];
@@ -488,9 +543,8 @@ export const useChatHandler = ({
                         const outputTokens = usageMetadata.candidatesTokenCount;
                         const userTextTokens = estimateTokens(fullPrompt);
 
-                        // If a tool that adds significant content to the prompt was used (image, url, search),
-                        // show the total prompt tokens to reflect the tool's cost.
-                        // Otherwise, only show the user's text tokens to hide history/system prompt cost.
+                        // If a tool that adds significant content to the prompt was used (image, url, search), show the total prompt tokens to reflect the tool's cost.
+                        // Otherwise (for normal chat or creator requests), only show the user's text tokens to hide history/system prompt cost.
                         const toolUsed = isUrlReadRequest || isImageAnalysisRequest || isFileAnalysisRequest || isWebSearchEnabled;
                         const displayInputTokens = toolUsed ? totalPromptTokens : userTextTokens;
                         const systemTokens = toolUsed ? 0 : totalPromptTokens - userTextTokens;
@@ -524,8 +578,7 @@ export const useChatHandler = ({
                         .then(result => setCodeMemory(prev => [...prev, { id: crypto.randomUUID(), ...result, language: capturedMatch[1] || 'text', code: capturedMatch[2] }]));
                 }
 
-                // FIX: Update memory less frequently to avoid rate-limiting. Check every 4 turns (8 messages).
-                if (finalCleanedResponse.trim() && finalConversationState.messages.length > 1 && finalConversationState.messages.length % 8 === 0) {
+                if (finalCleanedResponse.trim()) {
                     updateMemory([{ role: 'user', parts: [{ text: fullPrompt }] }, { role: 'model', parts: [{ text: finalCleanedResponse }] }], ltm, userProfile, modelToUse)
                         .then(memoryResult => {
                             const { newMemories, updatedMemories, userProfileUpdates } = memoryResult;
@@ -569,7 +622,7 @@ export const useChatHandler = ({
                 }
             }
         } catch (e: any) {
-            logDev('error', 'Error in handleSendMessage:', e);
+            logError(e);
             const friendlyError = getFriendlyErrorMessage(e);
             setError(friendlyError);
             updateConversationMessages(currentConversationId, prev => {
@@ -636,7 +689,7 @@ export const useChatHandler = ({
         apiKey, isLoading, activeConversationId, conversations, selectedChatModel, selectedTool, ltm, codeMemory, userProfile,
         setConversations, setActiveConversationId, setError, setIsLoading, updateConversationMessages, 
         updateConversation, setAllGeneratedImages, setImageGenerationPrompt, setIsImageOptionsOpen, 
-        setIsThinking, setIsSearchingWeb, setCodeMemory, setLtm, setUserProfile, setActiveSuggestion, clearThinkingIntervals, stopResponseTimer
+        setIsThinking, setIsSearchingWeb, setCodeMemory, setLtm, setUserProfile, setActiveSuggestion, clearThinkingIntervals, stopResponseTimer, logError
     ]);
 
     const handleUpdateMessageContent = (messageId: string, newContent: string) => {

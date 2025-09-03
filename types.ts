@@ -3,7 +3,7 @@ import React from 'react';
 export type ChatModel = 'gemini-2.5-flash' | 'gemini-2.5-pro';
 export type ControlState = 'auto' | 'on' | 'off';
 export type Tool = 'smart' | 'webSearch' | 'thinking' | 'imageGeneration' | 'translator' | 'urlReader';
-export type View = 'chat' | 'gallery' | 'memory' | 'translator' | 'usage' | 'transparency';
+export type View = 'chat' | 'gallery' | 'memory' | 'translator' | 'usage';
 
 export type MessageRole = 'user' | 'model';
 
@@ -42,12 +42,6 @@ export interface ChatMessage {
       name: string;
       size: number;
   };
-  hasImage?: boolean;
-  fileInfo?: {
-      name: string;
-      size: number;
-      mimeType: string;
-  };
   modelUsed?: ChatModel;
   sources?: GroundingChunk[];
   thoughts?: ThoughtStep[];
@@ -57,6 +51,7 @@ export interface ChatMessage {
   isAnalyzingFile?: boolean;
   isGeneratingImage?: boolean;
   isEditingImage?: boolean;
+  generationComplete?: boolean;
   generatedImagesBase64?: string[];
   imageGenerationCount?: number;
   aspectRatio?: "1:1" | "16:9" | "9:16" | "4:3" | "3:4" | number;
@@ -109,4 +104,14 @@ export interface ConsoleLog {
   level: 'log' | 'warn' | 'error';
   message: string;
   timestamp: string;
+}
+
+// Types for the Developer Console
+export type ConsoleMode = 'auto' | 'manual';
+
+export interface ConsoleLogEntry {
+    id: string;
+    timestamp: string;
+    message: string;
+    stack?: string;
 }

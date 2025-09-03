@@ -1,6 +1,8 @@
 
+
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Suggestion, Tool, ChatModel, ModelInfo, View } from './types';
+import { Suggestion, Tool, ChatModel, ModelInfo, View, ConsoleMode } from './types';
 import { initializeAiClient } from './services/aiClient';
 import Header from './components/Header';
 import ChatInput from './components/ChatInput';
@@ -16,11 +18,13 @@ import ConfirmationModal from './components/ConfirmationModal';
 import ImagePromptSuggestions from './components/ImagePromptSuggestions';
 import ModelSwitchModal from './components/ModelSwitchModal';
 import { codeKeywords } from './utils/codeKeywords';
-import DevConsoleButton from './components/DevConsoleButton';
+import { IS_DEV_CONSOLE_ENABLED } from '../config';
 import DevConsole from './components/DevConsole';
-import { setupGlobalErrorHandlers, logDev, subscribeToLogs, DevLog } from './services/loggingService';
-import { explainError } from './services/debugService';
-import { IS_DEV_CONSOLE_ENABLED } from './config';
+import ConsoleToggleButton from './components/ConsoleToggleButton';
+import { useDebug } from './contexts/DebugContext';
+import ParticleUniverse from './components/ParticleUniverse';
+import Globe from './components/Globe';
+import CodePreviewModal from './components/CodePreviewModal';
 
 const models: ModelInfo[] = [
     { id: 'gemini-2.5-flash', name: 'Kalina 2.5 Flash', description: 'Optimized for speed and efficiency.' },
@@ -41,7 +45,6 @@ const App: React.FC = () => {
             return storedImages ? JSON.parse(storedImages) : [];
         } catch (e) {
             console.error("Failed to parse generated images from localStorage", e);
-            logDev('error', "Failed to parse generated images from localStorage", e);
             return [];
         }
     });
@@ -56,17 +59,21 @@ const App: React.FC = () => {
             return storedUsage ? JSON.parse(storedUsage) : { input: 0, output: 0 };
         } catch (e) {
             console.error("Failed to parse translator usage from localStorage", e);
-            logDev('error', "Failed to parse translator usage from localStorage", e);
             return { input: 0, output: 0 };
         }
     });
-    
+    const [isDarkMode, setIsDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
+    const [codePreview, setCodePreview] = useState<{
+        code: string;
+        language: string;
+        messageId: string;
+        originalCode: string;
+    } | null>(null);
+
     // Dev Console State
-    const [consoleMode, setConsoleMode] = useState<'auto' | 'manual'>(() => {
-        return (localStorage.getItem('kalina_console_mode') as 'auto' | 'manual') || 'auto';
-    });
+    const { logs } = useDebug();
     const [isConsoleOpen, setIsConsoleOpen] = useState(false);
-    const [errorCount, setErrorCount] = useState(0);
+    const [consoleMode, setConsoleMode] = useState<ConsoleMode>('auto');
 
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -101,13 +108,26 @@ const App: React.FC = () => {
     const { handleSendMessage, handleUpdateMessageContent, handleCancelStream, elapsedTime } = chatHandler;
 
     const showWelcomeScreen = !activeConversation || activeConversation.messages.length === 0;
+    
+    useEffect(() => {
+        const observer = new MutationObserver(() => {
+            setIsDarkMode(document.documentElement.classList.contains('dark'));
+        });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        return () => observer.disconnect();
+    }, []);
+
+    useEffect(() => {
+        if (IS_DEV_CONSOLE_ENABLED && consoleMode === 'auto' && logs.length > 0) {
+            setIsConsoleOpen(true);
+        }
+    }, [logs, consoleMode]);
 
     useEffect(() => {
         try {
             localStorage.setItem('kalina_generated_images', JSON.stringify(allGeneratedImages));
         } catch (e) {
             console.error("Failed to save generated images to localStorage", e);
-            logDev('error', "Failed to save generated images to localStorage", e);
         }
     }, [allGeneratedImages]);
 
@@ -116,34 +136,10 @@ const App: React.FC = () => {
             localStorage.setItem('kalina_translator_usage', JSON.stringify(translatorUsage));
         } catch (e) {
             console.error("Failed to save translator usage to localStorage", e);
-            logDev('error', "Failed to save translator usage to localStorage", e);
         }
     }, [translatorUsage]);
 
-    // Console Mode Persistence
     useEffect(() => {
-        localStorage.setItem('kalina_console_mode', consoleMode);
-    }, [consoleMode]);
-    
-    // Console Auto-Open Logic
-    useEffect(() => {
-        if (!IS_DEV_CONSOLE_ENABLED) return;
-        const unsubscribe = subscribeToLogs((logs) => {
-            const newErrorCount = logs.filter(l => l.level === 'error').length;
-            if (consoleMode === 'auto' && newErrorCount > errorCount) {
-                setIsConsoleOpen(true);
-            }
-            setErrorCount(newErrorCount);
-        });
-        return unsubscribe;
-    }, [consoleMode, errorCount]);
-
-
-    useEffect(() => {
-        if (IS_DEV_CONSOLE_ENABLED) {
-            setupGlobalErrorHandlers();
-        }
-        
         const storedApiKey = localStorage.getItem('kalina_api_key');
         if (storedApiKey) {
             try {
@@ -151,7 +147,6 @@ const App: React.FC = () => {
                 setApiKey(storedApiKey);
             } catch (e) {
                 console.error("Failed to initialize with stored API key:", e);
-                logDev('error', "Failed to initialize with stored API key:", e);
                 localStorage.removeItem('kalina_api_key');
                 setIsApiKeyModalOpen(true);
             }
@@ -197,7 +192,6 @@ const App: React.FC = () => {
             setIsApiKeyModalOpen(false);
         } catch (e) {
             console.error("Failed to set API key:", e);
-            logDev('error', "Failed to set API key:", e);
         }
     };
 
@@ -208,8 +202,26 @@ const App: React.FC = () => {
     };
 
     const executeSendMessage = useCallback((prompt: string, image?: { base64: string; mimeType: string; }, file?: { base64: string; mimeType: string; name: string; size: number; }, overrideModel?: ChatModel, isRetry = false) => {
+        const convo = conversationManager.conversations.find(c => c.id === conversationManager.activeConversationId);
+        const isFirstMessage = !convo || convo.messages.length === 0;
+
         handleSendMessage(prompt, image, file, overrideModel, isRetry);
-    }, [handleSendMessage]);
+
+        setTimeout(() => {
+            if (scrollContainerRef.current) {
+                if (isFirstMessage) {
+                    // For the first message in a chat, scroll to the top to ensure the user's prompt is clearly visible below the header.
+                    scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                    // For all subsequent messages, scroll to the bottom to show the latest response.
+                    scrollContainerRef.current.scrollTo({
+                        top: scrollContainerRef.current.scrollHeight,
+                        behavior: 'smooth',
+                    });
+                }
+            }
+        }, 100);
+    }, [handleSendMessage, conversationManager.conversations, conversationManager.activeConversationId]);
 
     const handleSendMessageWrapper = useCallback((prompt: string, image?: { base64: string; mimeType: string; }, file?: { base64: string; mimeType: string; name: string; size: number; }, isRetry = false) => {
         if (selectedChatModel !== 'gemini-2.5-pro' && isCodeRelated(prompt) && !isRetry) {
@@ -288,36 +300,43 @@ const App: React.FC = () => {
         }));
     }, []);
 
-    const handleAskAiForErrorFix = useCallback(async (log: DevLog) => {
-        if (!apiKey) {
-            logDev('warn', 'Cannot ask AI for fix: API key not set.');
+    const showConsoleToggleButton = consoleMode === 'manual' || (consoleMode === 'auto' && logs.length > 0);
+
+    const handleOpenCodePreview = useCallback((code: string, language: string, messageId: string, originalCode: string) => {
+        setCodePreview({ code, language, messageId, originalCode });
+    }, []);
+
+    const handleCodeFixed = useCallback((newCode: string) => {
+        if (!codePreview || !activeConversation) return;
+
+        const message = activeConversation.messages.find(m => m.id === codePreview.messageId);
+        if (!message) {
+            setCodePreview(null);
             return;
         }
-        logDev('info', 'Asking AI to debug error...', log.message);
-        try {
-            const explanation = await explainError(log);
-            logDev('ai-response', explanation);
-        } catch (e) {
-            logDev('error', 'Failed to get explanation from AI', e);
-        }
-    }, [apiKey]);
 
+        const oldCodeBlock = `\`\`\`${codePreview.language}\n${codePreview.originalCode}\n\`\`\``;
+        const newCodeBlock = `\`\`\`${codePreview.language}\n${newCode}\n\`\`\``;
+        
+        const newContent = message.content.replace(oldCodeBlock, newCodeBlock);
+
+        handleUpdateMessageContent(codePreview.messageId, newContent);
+        setCodePreview(null);
+    }, [codePreview, activeConversation, handleUpdateMessageContent]);
 
     return (
-        <div className="flex flex-col h-[100dvh] bg-gray-50 dark:bg-[#131314] text-gray-900 dark:text-white transition-colors duration-300">
+        <div className="relative flex flex-col h-[100dvh] bg-[#F9F6F2] dark:bg-transparent text-neutral-800 dark:text-white transition-colors duration-300">
+            <div className="absolute inset-0 z-0">
+                {isDarkMode ? <ParticleUniverse /> : <Globe />}
+            </div>
+
             <Header
                 onShowGallery={() => setCurrentView('gallery')}
                 onShowMemory={() => setCurrentView('memory')}
                 onShowUsage={() => setCurrentView('usage')}
-                onShowTransparency={() => setCurrentView('transparency')}
                 isChatView={currentView === 'chat'}
-                models={models}
-                selectedChatModel={selectedChatModel}
-                onSelectChatModel={setSelectedChatModel}
-                apiKey={apiKey}
-                onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
                 consoleMode={consoleMode}
-                onSetConsoleMode={setConsoleMode}
+                setConsoleMode={setConsoleMode}
             />
 
             <ViewRenderer
@@ -347,10 +366,11 @@ const App: React.FC = () => {
                     setCurrentView('chat');
                 }}
                 onTranslationComplete={handleTranslationComplete}
+                onOpenCodePreview={handleOpenCodePreview}
             />
 
             {currentView === 'chat' && (
-                <div className="relative z-20 p-4 md:p-6 bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700">
+                <div className="relative z-20 p-4 md:p-6 bg-white/5 dark:bg-black/5 backdrop-blur-sm border-t border-neutral-200/50 dark:border-white/10 rounded-tl-3xl rounded-tr-3xl">
                     <div className="max-w-4xl mx-auto relative">
                         {selectedTool === 'imageGeneration' && <ImagePromptSuggestions onSelectPrompt={(p) => handleSendMessageWrapper(p)} />}
                         
@@ -365,6 +385,11 @@ const App: React.FC = () => {
                             onOpenHistory={() => setIsHistorySheetOpen(true)}
                             conversationCount={conversationManager.conversations.length}
                             onCancelStream={() => setIsStopConfirmOpen(true)}
+                            models={models}
+                            selectedChatModel={selectedChatModel}
+                            onSelectChatModel={setSelectedChatModel}
+                            apiKey={apiKey}
+                            onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
                         />
                     </div>
                 </div>
@@ -414,16 +439,27 @@ const App: React.FC = () => {
                 confirmButtonVariant="danger"
             />
 
+            {codePreview && (
+                <CodePreviewModal
+                    initialCode={codePreview.code}
+                    language={codePreview.language}
+                    onClose={() => setCodePreview(null)}
+                    onCodeFixed={handleCodeFixed}
+                />
+            )}
+            
             {IS_DEV_CONSOLE_ENABLED && (
                 <>
-                    <DevConsoleButton 
-                        onClick={() => setIsConsoleOpen(true)}
-                        isVisible={consoleMode === 'manual' || (consoleMode === 'auto' && errorCount > 0)}
-                    />
-                    <DevConsole 
-                        isOpen={isConsoleOpen} 
+                    {showConsoleToggleButton && (
+                        <ConsoleToggleButton
+                            onClick={() => setIsConsoleOpen(prev => !prev)}
+                            errorCount={logs.length}
+                        />
+                    )}
+                    <DevConsole
+                        isOpen={isConsoleOpen}
                         onClose={() => setIsConsoleOpen(false)}
-                        onAskAi={handleAskAiForErrorFix}
+                        mode={consoleMode}
                     />
                 </>
             )}

@@ -1,10 +1,10 @@
 
 import React, { useState } from 'react';
 import { ChatMessage as ChatMessageType } from '../types';
+import UserMessage from './message/UserMessage';
+import ModelMessage from './message/ModelMessage';
 import ImageModal from './ImageModal';
 import ConfirmationModal from './ConfirmationModal';
-import UserMessage from './message/UserMessage';
-import ModelResponse from './message/ModelResponse';
 
 interface ChatMessageProps extends ChatMessageType {
   isStreaming?: boolean;
@@ -19,6 +19,7 @@ interface ChatMessageProps extends ChatMessageType {
   isSpeaking?: boolean;
   onToggleAudio?: (id: string, text: string) => void;
   onCancelStream?: () => void;
+  onOpenCodePreview?: (code: string, language: string, messageId: string, originalCode: string) => void;
 }
 
 const ChatMessage: React.FC<ChatMessageProps> = (props) => {
@@ -37,7 +38,6 @@ const ChatMessage: React.FC<ChatMessageProps> = (props) => {
   };
 
   const isUser = props.role === 'user';
-  const messageId = `message-${props.index}`;
 
   return (
     <>
@@ -50,13 +50,11 @@ const ChatMessage: React.FC<ChatMessageProps> = (props) => {
         message="Do you want to download this image?"
         confirmButtonText="Download"
       />
-      <div id={messageId} className={isUser ? 'flex justify-end' : 'w-full'}>
-        {isUser ? (
-          <UserMessage {...props} setModalImage={setModalImage} />
-        ) : (
-          <ModelResponse {...props} setModalImage={setModalImage} setImageToDownload={setImageToDownload} />
-        )}
-      </div>
+      {isUser ? (
+        <UserMessage {...props} setModalImage={setModalImage} />
+      ) : (
+        <ModelMessage {...props} setModalImage={setModalImage} setImageToDownload={setImageToDownload} />
+      )}
     </>
   );
 };

@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import { GroundingChunk } from '../types';
 import CodeBlock from './CodeBlock';
@@ -23,14 +21,14 @@ const Citation: React.FC<{ source: GroundingChunk; index: number }> = ({ source,
                 target="_blank"
                 rel="noopener noreferrer"
                 title={fullTitle}
-                className="inline-block align-baseline ml-1 px-2 py-0.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-xs font-medium no-underline hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                className="inline-block align-baseline ml-1 px-2 py-0.5 bg-neutral-200 dark:bg-gray-700 text-neutral-700 dark:text-gray-300 rounded-full text-xs font-medium no-underline hover:bg-neutral-300 dark:hover:bg-gray-600 transition-colors"
             >
                 {displayName}
             </a>
         );
     } catch (e) {
         // Fallback for invalid URLs that throw an error in the URL constructor.
-        return <sup className="text-xs font-semibold text-indigo-500 dark:text-indigo-400 mx-0.5" title={`Invalid URL: ${source.web.uri}`}>[{index + 1}]</sup>;
+        return <sup className="text-xs font-semibold text-amber-500 dark:text-amber-400 mx-0.5" title={`Invalid URL: ${source.web.uri}`}>[{index + 1}]</sup>;
     }
 };
 
@@ -60,7 +58,7 @@ const parseInline = (text: string, sources?: GroundingChunk[]): React.ReactNode 
             return <em key={i}>{part.slice(1, -1)}</em>;
         }
         if (part.startsWith('`') && part.endsWith('`')) {
-            return <code key={i} className="bg-gray-200 dark:bg-gray-700/60 text-gray-800 dark:text-gray-200 font-mono text-sm px-1.5 py-1 rounded-md mx-0.5">{part.slice(1, -1)}</code>;
+            return <code key={i} className="bg-neutral-200 dark:bg-gray-700/60 text-neutral-800 dark:text-gray-200 font-mono text-sm px-1.5 py-1 rounded-md mx-0.5">{part.slice(1, -1)}</code>;
         }
         
         if (urlRegex.test(part)) {
@@ -71,7 +69,7 @@ const parseInline = (text: string, sources?: GroundingChunk[]): React.ReactNode 
                     href={href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-indigo-600 dark:text-indigo-400 bg-indigo-100/80 dark:bg-indigo-900/50 hover:bg-indigo-200/80 dark:hover:bg-indigo-800/60 font-medium px-2 py-0.5 rounded-full no-underline hover:underline break-all"
+                    className="text-amber-600 dark:text-amber-400 bg-amber-100/80 dark:bg-amber-900/50 hover:bg-amber-200/80 dark:hover:bg-amber-800/60 font-medium px-2 py-0.5 rounded-full no-underline hover:underline break-all"
                 >
                     {part}
                 </a>
@@ -87,9 +85,10 @@ interface MarkdownRendererProps {
     sources?: GroundingChunk[];
     onContentUpdate: (newContent: string) => void;
     isStreaming?: boolean;
+    onOpenCodePreview?: (code: string, language: string, originalCode: string) => void;
 }
 
-const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, sources, onContentUpdate, isStreaming }) => {
+const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, sources, onContentUpdate, isStreaming, onOpenCodePreview }) => {
     const lines = content.split('\n');
     const elements: React.ReactNode[] = [];
     let currentList: { type: 'ul' | 'ol'; items: React.ReactNode[] } | null = null;
@@ -115,14 +114,6 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, sources, o
         }
     };
 
-    const handlePersistCodeUpdate = (oldCode: string, newCode: string, language: string) => {
-        const oldCodeBlock = `\`\`\`${language}\n${oldCode}\n\`\`\``;
-        const newCodeBlock = `\`\`\`${language}\n${newCode}\n\`\`\``;
-        // A simple replace is generally safe as the same code block is unlikely to appear twice in one message.
-        // For more complex scenarios, a more robust replacement strategy would be needed.
-        onContentUpdate(content.replace(oldCodeBlock, newCodeBlock));
-    };
-
     lines.forEach((line, index) => {
         // Code blocks
         if (line.trim().startsWith('```')) {
@@ -134,7 +125,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, sources, o
                     key={`code-${index}`} 
                     language={lang} 
                     code={code}
-                    onPersistUpdate={(old, newC) => handlePersistCodeUpdate(old, newC, lang)}
+                    onOpenPreview={onOpenCodePreview ? (currentCode) => onOpenCodePreview(currentCode, lang, code) : undefined}
                     isStreaming={isStreaming}
                 />);
                 inCodeBlock = false;
@@ -155,7 +146,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, sources, o
         // Horizontal Rules
         if (line.match(/^(---|___|\*\*\*)\s*$/)) {
             flushList(`list-before-hr-${index}`);
-            elements.push(<hr key={index} className="my-4 border-gray-200 dark:border-gray-700" />);
+            elements.push(<hr key={index} className="my-4 border-neutral-200 dark:border-gray-700" />);
             return;
         }
         
@@ -218,7 +209,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, sources, o
             key="code-at-end" 
             language={lang} 
             code={code}
-            onPersistUpdate={(old, newC) => handlePersistCodeUpdate(old, newC, lang)}
+            onOpenPreview={onOpenCodePreview ? (currentCode) => onOpenCodePreview(currentCode, lang, code) : undefined}
             isStreaming={isStreaming}
         />);
     }

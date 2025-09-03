@@ -45,9 +45,9 @@ const UrlReaderAnimation: React.FC<UrlReaderAnimationProps> = ({ isLongUrlRead }
                     top: 50%;
                     left: 50%;
                     transform: translate(-50%, -50%);
-                    background-color: #e5e7eb; /* gray-200 */
+                    background-color: #f5f5f5; /* neutral-100 */
                     border-radius: 8px;
-                    border: 2px solid #9ca3af; /* gray-400 */
+                    border: 2px solid #a3a3a3; /* neutral-400 */
                 }
                 .dark .document-icon {
                     background-color: #374151; /* gray-700 */
@@ -58,7 +58,7 @@ const UrlReaderAnimation: React.FC<UrlReaderAnimationProps> = ({ isLongUrlRead }
                     left: 10px;
                     right: 10px;
                     height: 3px;
-                    background-color: #9ca3af; /* gray-400 */
+                    background-color: #a3a3a3; /* neutral-400 */
                     border-radius: 2px;
                 }
                 .dark .document-line {
@@ -74,14 +74,14 @@ const UrlReaderAnimation: React.FC<UrlReaderAnimationProps> = ({ isLongUrlRead }
                     left: 0;
                     right: 0;
                     height: 5px;
-                    background-color: #60a5fa; /* blue-400 */
-                    box-shadow: 0 0 10px 2px #60a5fa;
+                    background-color: #fbbf24; /* amber-400 */
+                    box-shadow: 0 0 10px 2px #fbbf24;
                     border-radius: 5px;
                     animation: scan 3s ease-in-out infinite;
                 }
                 .dark .scanner-beam {
-                     background-color: #93c5fd; /* blue-300 */
-                     box-shadow: 0 0 10px 2px #93c5fd;
+                     background-color: #fcd34d; /* amber-300 */
+                     box-shadow: 0 0 10px 2px #fcd34d;
                 }
                 @keyframes scan {
                     0%, 100% { transform: translateY(0); opacity: 0; }
@@ -110,7 +110,7 @@ const UrlReaderAnimation: React.FC<UrlReaderAnimationProps> = ({ isLongUrlRead }
         <div className="flex flex-col items-center justify-center my-4 p-4 gap-6">
             {animationMarkup}
             <div className="message-container">
-                <p className={`text-center text-sm text-gray-500 dark:text-gray-400 transition-opacity duration-500 ${isFading && !isLongUrlRead ? 'opacity-0' : 'opacity-100'}`}>
+                <p className={`text-center text-sm text-neutral-500 dark:text-gray-400 transition-opacity duration-500 ${isFading && !isLongUrlRead ? 'opacity-0' : 'opacity-100'}`}>
                     {isLongUrlRead
                         ? "This page is quite large, analysis is taking a bit longer than usual. Thanks for your patience!"
                         : messages[currentMessageIndex]}

@@ -57,27 +57,27 @@ const WebSearchAnimation: React.FC<WebSearchAnimationProps> = ({ plan }) => {
                     width: 100%;
                     height: 100%;
                     border: 1px solid;
-                    border-color: #60a5fa; /* blue-400 */
+                    border-color: #fbbf24; /* amber-400 */
                     border-radius: 50%;
                     transform-style: preserve-3d;
-                    box-shadow: 0 0 10px #60a5fa, inset 0 0 10px #60a5fa;
+                    box-shadow: 0 0 10px #fbbf24, inset 0 0 10px #fbbf24;
                 }
                 .dark .globe-ring {
-                    border-color: #93c5fd; /* blue-300 */
-                    box-shadow: 0 0 10px #93c5fd, inset 0 0 10px #93c5fd;
+                    border-color: #fcd34d; /* amber-300 */
+                    box-shadow: 0 0 10px #fcd34d, inset 0 0 10px #fcd34d;
                 }
                 .globe-node {
                     position: absolute;
                     width: 6px;
                     height: 6px;
-                    background: #3b82f6; /* blue-500 */
+                    background: #f59e0b; /* amber-500 */
                     border-radius: 50%;
-                    box-shadow: 0 0 8px 2px #3b82f6;
+                    box-shadow: 0 0 8px 2px #f59e0b;
                     animation: pulseNode 2s ease-in-out infinite;
                 }
                 .dark .globe-node {
-                     background: #60a5fa; /* blue-400 */
-                     box-shadow: 0 0 8px 2px #60a5fa;
+                     background: #fbbf24; /* amber-400 */
+                     box-shadow: 0 0 8px 2px #fbbf24;
                 }
 
                 /* Node Positions */
@@ -125,7 +125,7 @@ const WebSearchAnimation: React.FC<WebSearchAnimationProps> = ({ plan }) => {
                 </div>
             </div>
             <div className="message-container">
-                <p className={`text-center text-sm text-gray-500 dark:text-gray-400 transition-opacity duration-500 ${isFading ? 'opacity-0' : 'opacity-100'}`}>
+                <p className={`text-center text-sm text-neutral-500 dark:text-gray-400 transition-opacity duration-500 ${isFading ? 'opacity-0' : 'opacity-100'}`}>
                     {messages[currentMessageIndex]}
                 </p>
             </div>

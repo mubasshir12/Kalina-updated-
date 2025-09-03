@@ -1,8 +1,6 @@
-
-
 import React, { useMemo } from 'react';
 import { Conversation } from '../types';
-import { ArrowLeft, MessageSquareText, LogIn, LogOut, Cpu, Languages, Info } from 'lucide-react';
+import { ArrowLeft, MessageSquareText, LogIn, LogOut, Cpu, Languages } from 'lucide-react';
 
 interface UsageStatsViewProps {
     conversations: Conversation[];
@@ -11,16 +9,16 @@ interface UsageStatsViewProps {
 }
 
 const StatCard: React.FC<{ icon?: React.ElementType, label: string, value: string, colorClass: string, helpText: string }> = ({ icon: Icon, label, value, colorClass, helpText }) => (
-    <div className="bg-white dark:bg-[#2E2F33] p-3 sm:p-4 rounded-xl flex items-center gap-2 sm:gap-4 border border-gray-200 dark:border-gray-700/50">
+    <div className="bg-white/80 dark:bg-[#2E2F33]/80 backdrop-blur-sm p-3 sm:p-4 rounded-xl flex items-center gap-2 sm:gap-4 border border-neutral-200 dark:border-gray-700/50">
         {Icon && (
             <div className={`p-2 sm:p-3 rounded-full ${colorClass} flex-shrink-0`}>
                 <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             </div>
         )}
         <div className="flex-1 overflow-hidden">
-            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">{label}</p>
-            <p className="text-lg sm:text-2xl font-bold text-gray-800 dark:text-gray-200">{value}</p>
-            <p className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-500 truncate">{helpText}</p>
+            <p className="text-xs sm:text-sm text-neutral-500 dark:text-gray-400 truncate">{label}</p>
+            <p className="text-lg sm:text-2xl font-bold text-neutral-800 dark:text-gray-200">{value}</p>
+            <p className="text-[10px] sm:text-xs text-neutral-400 dark:text-gray-500 truncate">{helpText}</p>
         </div>
     </div>
 );
@@ -80,34 +78,24 @@ const UsageStatsView: React.FC<UsageStatsViewProps> = ({ conversations, translat
     }
 
     return (
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50 dark:bg-[#131314]">
+        <main className="relative z-10 flex-1 overflow-y-auto p-4 md:p-6">
             <div className="max-w-4xl mx-auto">
                 <div className="flex items-center mb-6">
-                    <button onClick={onBack} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors mr-2 md:mr-4" aria-label="Back to chat">
+                    <button onClick={onBack} className="p-2 rounded-full hover:bg-neutral-200 dark:hover:bg-gray-800 transition-colors mr-2 md:mr-4" aria-label="Back to chat">
                         <ArrowLeft className="h-6 w-6" />
                     </button>
-                    <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-200">Usage Dashboard</h1>
+                    <h1 className="text-2xl md:text-3xl font-bold text-neutral-800 dark:text-gray-200">Usage Dashboard</h1>
                 </div>
 
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 p-4 rounded-xl mb-6 flex items-start gap-4">
-                    <Info className="h-6 w-6 text-blue-500 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                        <h3 className="font-semibold text-blue-800 dark:text-blue-200">What are Tokens?</h3>
-                        <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                            Tokens are the units Google uses to measure AI model usage. Think of them as pieces of words. Both your prompts (input) and the AI's answers (output) consume tokens. This dashboard helps you track your consumption.
-                        </p>
-                    </div>
-                </div>
-
-                <div className="bg-white dark:bg-[#1e1f22] rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 mb-6 p-6">
-                    <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-1">Overall Usage</h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Total tokens used across all tools.</p>
+                <div className="bg-white/80 dark:bg-[#1e1f22]/80 backdrop-blur-sm rounded-2xl shadow-sm border border-neutral-200 dark:border-gray-700 mb-6 p-6">
+                    <h2 className="text-lg font-semibold text-neutral-800 dark:text-gray-200 mb-1">Overall Usage</h2>
+                    <p className="text-sm text-neutral-500 dark:text-gray-400 mb-4">Total tokens used across all tools.</p>
                     
                     <div className="text-center mb-6">
-                        <p className="text-5xl font-extrabold text-indigo-600 dark:text-indigo-400">{formatNumber(grandTotal.total)}</p>
-                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Tokens</p>
+                        <p className="text-5xl font-extrabold text-amber-600 dark:text-amber-400">{formatNumber(grandTotal.total)}</p>
+                        <p className="text-sm font-medium text-neutral-500 dark:text-gray-400">Total Tokens</p>
                     </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 mb-4">
+                    <div className="w-full bg-neutral-200 dark:bg-gray-700 rounded-full h-3 mb-4">
                         <div className="flex h-3">
                             <div className="bg-blue-500 rounded-l-full" style={{ width: totalPercentage(grandTotal.input, grandTotal.total) }} title={`Input: ${totalPercentage(grandTotal.input, grandTotal.total)}`}></div>
                             <div className="bg-green-500" style={{ width: totalPercentage(grandTotal.output, grandTotal.total) }} title={`Output: ${totalPercentage(grandTotal.output, grandTotal.total)}`}></div>
@@ -123,28 +111,28 @@ const UsageStatsView: React.FC<UsageStatsViewProps> = ({ conversations, translat
                 
                 {translatorTotal > 0 && (
                     <div className="mb-6">
-                        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">Tool Usage</h2>
+                        <h2 className="text-xl font-semibold text-neutral-800 dark:text-gray-200 mb-2">Tool Usage</h2>
                         <StatCard icon={Languages} label="Translator Tool" value={formatNumber(translatorTotal)} helpText="Total tokens used" colorClass="bg-purple-500" />
                     </div>
                 )}
 
 
                 <div>
-                    <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Chat Conversation Breakdown</h2>
+                    <h2 className="text-xl font-semibold text-neutral-800 dark:text-gray-200 mb-4">Chat Conversation Breakdown</h2>
                     <div className="space-y-3">
                         {conversationStats.map(stats => (
-                             <div key={stats.id} className="bg-white dark:bg-[#1e1f22] rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                             <div key={stats.id} className="bg-white/80 dark:bg-[#1e1f22]/80 backdrop-blur-sm rounded-xl p-4 border border-neutral-200 dark:border-gray-700">
                                 <div className="flex justify-between items-start mb-2">
                                     <div>
-                                        <p className="font-medium text-gray-800 dark:text-gray-200 line-clamp-1">{stats.title}</p>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400">{stats.messageCount} responses</p>
+                                        <p className="font-medium text-neutral-800 dark:text-gray-200 line-clamp-1">{stats.title}</p>
+                                        <p className="text-xs text-neutral-500 dark:text-gray-400">{stats.messageCount} responses</p>
                                     </div>
                                     <div className="text-right flex-shrink-0 ml-4">
-                                        <p className="font-bold text-lg text-gray-800 dark:text-gray-200">{formatNumber(stats.total)}</p>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400">Tokens</p>
+                                        <p className="font-bold text-lg text-neutral-800 dark:text-gray-200">{formatNumber(stats.total)}</p>
+                                        <p className="text-xs text-neutral-500 dark:text-gray-400">Tokens</p>
                                     </div>
                                 </div>
-                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                <div className="w-full bg-neutral-200 dark:bg-gray-700 rounded-full h-2">
                                     <div className="flex h-2">
                                         <div className="bg-blue-500 rounded-l-full" style={{ width: totalPercentage(stats.input, stats.total) }} title={`Input: ${formatNumber(stats.input)}`}></div>
                                         <div className="bg-green-500" style={{ width: totalPercentage(stats.output, stats.total) }} title={`Output: ${formatNumber(stats.output)}`}></div>
@@ -154,9 +142,9 @@ const UsageStatsView: React.FC<UsageStatsViewProps> = ({ conversations, translat
                             </div>
                         ))}
                          {conversationStats.length === 0 && (
-                             <div className="text-center text-gray-500 dark:text-gray-400 py-12 px-4 bg-white dark:bg-[#1e1f22] rounded-xl border border-dashed border-gray-300 dark:border-gray-700">
-                                <MessageSquareText className="h-12 w-12 mx-auto text-gray-400 dark:text-gray-500 mb-3" />
-                                <h3 className="font-semibold text-gray-800 dark:text-gray-200">No Chat Usage Data</h3>
+                             <div className="text-center text-neutral-500 dark:text-gray-400 py-12 px-4 bg-white/80 dark:bg-[#1e1f22]/80 backdrop-blur-sm rounded-xl border border-dashed border-neutral-300 dark:border-gray-700">
+                                <MessageSquareText className="h-12 w-12 mx-auto text-neutral-400 dark:text-gray-500 mb-3" />
+                                <h3 className="font-semibold text-neutral-800 dark:text-gray-200">No Chat Usage Data</h3>
                                 <p className="text-sm">Start a conversation to see token statistics.</p>
                             </div>
                          )}

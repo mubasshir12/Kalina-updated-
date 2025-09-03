@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Info, ChevronDown, CheckCircle2, ChevronUp } from 'lucide-react';
 import { ThoughtStep } from '../types';
@@ -48,7 +47,7 @@ const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ thoughts, duration, i
     if (isThinking && safeThoughts.length > 0) {
         const currentThought = safeThoughts[currentIndex];
         return (
-            <div className="bg-gray-100 dark:bg-gray-800/50 rounded-lg mb-4 border border-gray-200 dark:border-gray-700 p-3 flex items-center gap-3 text-sm font-medium text-gray-700 dark:text-gray-300 transition-all duration-300">
+            <div className="bg-neutral-100 dark:bg-gray-800/50 rounded-lg mb-4 border border-neutral-200 dark:border-gray-700 p-3 flex items-center gap-3 text-sm font-medium text-neutral-700 dark:text-gray-300 transition-all duration-300">
                 <ThinkingAnimation />
                 <div className="flex-grow overflow-hidden">
                      <span
@@ -58,7 +57,7 @@ const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ thoughts, duration, i
                         {currentThought?.concise_step || 'Analyzing...'}
                     </span>
                 </div>
-                <span className="ml-auto text-gray-500 dark:text-gray-400 flex-shrink-0">{(duration || 0).toFixed(1)}s</span>
+                <span className="ml-auto text-neutral-500 dark:text-gray-400 flex-shrink-0">{(duration || 0).toFixed(1)}s</span>
             </div>
         );
     }
@@ -66,20 +65,20 @@ const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ thoughts, duration, i
     // After thinking is complete, only render the collapsible summary if there were thoughts.
     if (!isThinking && safeThoughts.length > 0) {
         return (
-             <details className="bg-gray-100 dark:bg-gray-800/50 rounded-lg mb-4 border border-gray-200 dark:border-gray-700 group">
-                <summary className="p-3 cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2 hover:bg-gray-200/60 dark:hover:bg-gray-700/50 rounded-t-lg transition-colors list-none [&::-webkit-details-marker]:hidden">
-                    <Info className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+             <details className="bg-neutral-100 dark:bg-gray-800/50 rounded-lg mb-4 border border-neutral-200 dark:border-gray-700 group">
+                <summary className="p-3 cursor-pointer text-sm font-medium text-neutral-700 dark:text-gray-300 flex items-center gap-2 hover:bg-neutral-200/60 dark:hover:bg-gray-700/50 rounded-t-lg transition-colors list-none [&::-webkit-details-marker]:hidden">
+                    <Info className="h-5 w-5 text-neutral-500 dark:text-gray-400" />
                     <span>Thought about</span>
-                    <span className="ml-1 text-gray-500 dark:text-gray-400">({(duration || 0).toFixed(1)}s)</span>
-                    <div className="ml-auto text-gray-500 dark:text-gray-400">
+                    <span className="ml-1 text-neutral-500 dark:text-gray-400">({(duration || 0).toFixed(1)}s)</span>
+                    <div className="ml-auto text-neutral-500 dark:text-gray-400">
                         <ChevronDown className="w-5 h-5 block group-open:hidden" />
                         <ChevronUp className="w-5 h-5 hidden group-open:block" />
                     </div>
                 </summary>
-                <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="p-4 border-t border-neutral-200 dark:border-gray-700">
                     <ul className="space-y-2">
                         {safeThoughts.map((thought, index) => (
-                            <li key={index} className="flex items-start gap-3 text-sm text-gray-600 dark:text-gray-400">
+                            <li key={index} className="flex items-start gap-3 text-sm text-neutral-600 dark:text-gray-400">
                                <CheckCircle2 className="w-4 h-4 text-green-500 dark:text-green-400 flex-shrink-0 mt-0.5" />
                                 <span>{thought.step}</span>
                             </li>

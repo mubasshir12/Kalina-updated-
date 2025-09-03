@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface ConversationNavigatorProps {
@@ -31,12 +30,12 @@ const ConversationNavigator: React.FC<ConversationNavigatorProps> = ({ userMessa
             </div>
             <style>{`
                 :root {
-                    --color-active: #4f46e5; /* indigo-600 */
-                    --color-inactive: #d1d5db; /* gray-300 */
+                    --color-active: #f59e0b; /* amber-600 */
+                    --color-inactive: #e5e5e5; /* neutral-300 */
                 }
                 .dark {
-                    --color-active: #818cf8; /* indigo-400 */
-                    --color-inactive: #4b5563; /* gray-600 */
+                    --color-active: #fbbf24; /* amber-400 */
+                    --color-inactive: #525252; /* neutral-600 */
                 }
             `}</style>
         </div>

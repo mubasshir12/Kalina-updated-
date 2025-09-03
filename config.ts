@@ -1,8 +1,6 @@
 /**
  * Developer Console Configuration
- * 
- * To disable the in-app developer console for a production build
- * or to hide it during normal use, change the value of 
- * IS_DEV_CONSOLE_ENABLED to `false`.
+ * To completely remove the developer console from the app, change this to `false`.
+ * This will prevent the console components and all related logic from being included in the app.
  */
 export const IS_DEV_CONSOLE_ENABLED = true;

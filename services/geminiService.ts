@@ -1,25 +1,50 @@
+
+
 import { Part, Type } from "@google/genai";
 import { getAiClient } from "./aiClient";
-import { logDev } from "./loggingService";
 
-const planAndThinkSystemInstruction = `You are an intelligent router. Analyze the user's prompt to determine the correct response strategy. Respond ONLY with a valid JSON object.
+const planAndThinkSystemInstruction = `You are an AI planner. Analyze the user's prompt to determine the best response strategy by classifying it. Your primary goal is to distinguish between web search, URL read, complex, simple, and image-related prompts.
 
-**Decision Logic:**
+**1. Web Search (needsWebSearch: true):**
+Set to true for queries needing real-time or up-to-date info (news, events, live data).
+**Rule:** When in doubt about your knowledge's currency, ALWAYS default to a web search.
 
-1.  **\`needsWebSearch: true\`**: For queries requiring real-time, up-to-the-minute information (news, events, trends). **If knowledge freshness is uncertain, default to web search.**
-2.  **\`isUrlReadRequest: true\`**: If the prompt contains a URL and asks a question about it (e.g., "summarize this").
-3.  **Image/File Handling**:
-    *   **\`isImageEditRequest: true\`**: If an image is provided and the user asks to modify it.
-    *   **\`isImageGenerationRequest: true\`**: If the user asks to create an image and no image is provided.
-    *   For file analysis (PDF, TXT), set **\`needsThinking: true\`**.
-4.  **\`needsThinking: true\`**: For complex prompts requiring analysis, creativity, brainstorming, coding, planning, or detailed reasoning. Also for file analysis.
-5.  **\`needsThinking: false\`**: For simple, conversational prompts.
-6.  **\`needsCodeContext: true\`**: If the prompt is related to previously discussed code.
+**2. URL Read (isUrlReadRequest: true):**
+Set to true if the prompt contains a URL and asks a question about its content (e.g., "summarize this").
 
-**'thoughts' & 'searchPlan' Arrays:**
-- If \`needsThinking\` is true, provide a \`thoughts\` array.
-- If \`needsWebSearch\` is true, provide a \`searchPlan\` array.
-- Each item in these arrays must be an object with 'phase', 'step', and a 'concise_step' (3-5 words, ending in '-ing'). The final 'concise_step' for \`thoughts\` must be dynamic (e.g., 'Generating response...').`;
+**3. Creator Inquiry (isCreatorRequest: true):**
+Set to true if the user asks who created you, your developer, or your origin.
+
+**4. Capabilities Inquiry (isCapabilitiesRequest: true):**
+Set to true if the user asks what you can do, about your tools, or your abilities (e.g., "what are your skills?", "can you generate images?").
+
+**5. Image & File Analysis:**
+- **Image Edit (isImageEditRequest: true):** Set if the user provides an image and asks to modify it.
+- **File Analysis:** If a file is attached, always set 'needsThinking' to true.
+
+**6. Complex Prompts (needsThinking: true):**
+Set to true for prompts requiring analysis, creativity, multi-step reasoning, coding, or file analysis.
+
+**7. Simple Prompts (needsThinking: false):**
+Set to false for basic conversational turns.
+
+**Output:**
+Respond ONLY with a valid JSON object based on the prompt analysis.
+
+**JSON Schema:**
+- \`needsWebSearch\` (boolean): Requires up-to-date info.
+- \`isUrlReadRequest\` (boolean): URL found and needs to be analyzed.
+- \`isCreatorRequest\` (boolean): User is asking about the developer.
+- \`isCapabilitiesRequest\` (boolean): User is asking about your abilities.
+- \`needsThinking\` (boolean): Complex task.
+- \`needsCodeContext\` (boolean): Prompt relates to previous code.
+- \`isImageGenerationRequest\` (boolean): User asks to create a new image.
+- \`isImageEditRequest\` (boolean): User provides an image and asks to modify it.
+- \`thoughts\` (array, optional): If 'needsThinking' is true, provide a step-by-step plan.
+- \`searchPlan\` (array, optional): If 'needsWebSearch' is true, provide a research plan.
+
+**'thoughts' & 'searchPlan' item structure:**
+Each item must be an object with 'phase', 'step', and 'concise_step' (3-5 words ending in '-ing'). The final 'concise_step' for 'thoughts' must be dynamic and end in '-ing' (e.g., 'Generating response...').`;
 
 export interface ThoughtStep {
     phase: string;
@@ -29,6 +54,8 @@ export interface ThoughtStep {
 export interface ResponsePlan {
     needsWebSearch: boolean;
     isUrlReadRequest: boolean;
+    isCreatorRequest: boolean;
+    isCapabilitiesRequest: boolean;
     needsThinking: boolean;
     needsCodeContext: boolean;
     isImageGenerationRequest: boolean;
@@ -59,6 +86,8 @@ export const planResponse = async (prompt: string, image?: { base64: string; mim
                     properties: {
                         needsWebSearch: { type: Type.BOOLEAN },
                         isUrlReadRequest: { type: Type.BOOLEAN },
+                        isCreatorRequest: { type: Type.BOOLEAN },
+                        isCapabilitiesRequest: { type: Type.BOOLEAN },
                         needsThinking: { type: Type.BOOLEAN },
                         needsCodeContext: { type: Type.BOOLEAN },
                         isImageGenerationRequest: { type: Type.BOOLEAN },
@@ -88,7 +117,7 @@ export const planResponse = async (prompt: string, image?: { base64: string; mim
                             }
                         }
                     },
-                    required: ["needsWebSearch", "isUrlReadRequest", "needsThinking", "isImageGenerationRequest", "isImageEditRequest", "needsCodeContext"],
+                    required: ["needsWebSearch", "isUrlReadRequest", "isCreatorRequest", "isCapabilitiesRequest", "needsThinking", "isImageGenerationRequest", "isImageEditRequest", "needsCodeContext"],
                 }
             }
         });
@@ -105,12 +134,13 @@ export const planResponse = async (prompt: string, image?: { base64: string; mim
     } catch (error)
     {
         console.error("Error planning response:", error);
-        logDev('error', 'Error in planResponse:', error);
         // Fallback: If planning fails, assume web search is needed but disable thinking.
         const needsWebSearch = true;
         return { 
             needsWebSearch: needsWebSearch,
             isUrlReadRequest: false,
+            isCreatorRequest: false,
+            isCapabilitiesRequest: false,
             needsThinking: !needsWebSearch, // Ensures thinking is false if web search is true
             needsCodeContext: false, // <-- Changed from true to false for token efficiency on error
             isImageGenerationRequest: !image && (prompt.toLowerCase().includes('generate') || prompt.toLowerCase().includes('create')),

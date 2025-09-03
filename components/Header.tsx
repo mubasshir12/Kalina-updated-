@@ -1,190 +1,60 @@
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Image as GalleryIcon, ChevronDown, BrainCircuit, KeyRound, BarChart3, Menu, Info, Monitor, SlidersHorizontal } from 'lucide-react';
-import { ChatModel, ModelInfo } from '../types';
+
+import React, { useState } from 'react';
+import { LayoutGrid } from 'lucide-react';
+import { ConsoleMode } from '../types';
+import ThemeSelector from './ThemeSelector';
+import MenuSheet from './MenuSheet';
 
 interface HeaderProps {
     onShowGallery: () => void;
     onShowMemory: () => void;
     onShowUsage: () => void;
-    onShowTransparency: () => void;
     isChatView: boolean;
-    models: ModelInfo[];
-    selectedChatModel: ChatModel;
-    onSelectChatModel: (model: ChatModel) => void;
-    apiKey: string | null;
-    onOpenApiKeyModal: () => void;
-    consoleMode: 'auto' | 'manual';
-    onSetConsoleMode: (mode: 'auto' | 'manual') => void;
+    consoleMode: ConsoleMode;
+    setConsoleMode: (mode: ConsoleMode) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ 
-    onShowGallery, onShowMemory, onShowUsage, onShowTransparency, isChatView, 
-    models, selectedChatModel, onSelectChatModel, apiKey, onOpenApiKeyModal,
-    consoleMode, onSetConsoleMode 
-}) => {
-  const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false);
+const Header: React.FC<HeaderProps> = (props) => {
   const [isMenuSheetOpen, setIsMenuSheetOpen] = useState(false);
-  const modelSelectorRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (modelSelectorRef.current && !modelSelectorRef.current.contains(event.target as Node)) {
-        setIsModelSelectorOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-  
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
-            setIsMenuSheetOpen(false);
-        }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  const selectedModelObject = models.find(m => m.id === selectedChatModel) || models[0];
-
-  const maskApiKey = (key: string | null): string => {
-      if (!key || key.length < 8) return 'Not set';
-      return `${key.substring(0, 4)}...${key.substring(key.length - 4)}`;
-  };
-  
-  const handleLinkClick = (action: () => void) => {
-    action();
-    setIsMenuSheetOpen(false);
-  };
 
   return (
     <>
-        <header className="bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 p-4 sticky top-0 z-30">
-          <div className="max-w-4xl mx-auto flex items-center justify-between relative">
-            <div className="flex items-center">
-                <h1 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Kalina AI</h1>
-            </div>
-            {isChatView && (
-                <div ref={modelSelectorRef} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                    <button
-                        onClick={() => setIsModelSelectorOpen(prev => !prev)}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-gray-200/50 dark:bg-gray-800/50 rounded-xl text-gray-800 dark:text-gray-200 hover:bg-gray-300/50 dark:hover:bg-gray-700/70 transition-colors"
-                    >
-                        <span className="font-semibold text-sm whitespace-nowrap">{selectedModelObject.name}</span>
-                        <ChevronDown className={`w-4 h-4 transition-transform ${isModelSelectorOpen ? 'rotate-180' : ''}`} />
-                    </button>
-                    {isModelSelectorOpen && (
-                        <div className="absolute top-full mt-2 w-64 bg-white dark:bg-[#2E2F33] border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden z-20">
-                            {models.map(model => (
-                                <button
-                                    key={model.id}
-                                    onClick={() => {
-                                        onSelectChatModel(model.id);
-                                        setIsModelSelectorOpen(false);
-                                    }}
-                                    className={`w-full text-left p-3 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors ${
-                                        selectedChatModel === model.id ? 'bg-gray-100 dark:bg-gray-700/70' : ''
-                                    }`}
-                                >
-                                    <p className="font-semibold text-sm">{model.name}</p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">{model.description}</p>
-                                </button>
-                            ))}
-                            <div className="border-t border-gray-200 dark:border-gray-600 my-1" />
-                            <button
-                                onClick={() => {
-                                    onOpenApiKeyModal();
-                                    setIsModelSelectorOpen(false);
-                                }}
-                                className="w-full text-left p-3 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors flex items-center gap-2"
-                            >
-                                <KeyRound className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                                <div>
-                                    <p className="font-semibold text-sm">Update API Key</p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">{maskApiKey(apiKey)}</p>
-                                </div>
-                            </button>
-                        </div>
-                    )}
-                </div>
-            )}
-            <div className="flex items-center gap-2">
-                {isChatView && (
+      <header className="bg-white/5 dark:bg-black/5 backdrop-blur-sm border-b border-neutral-200/50 dark:border-white/10 p-4 sticky top-0 z-30">
+        <div className="max-w-4xl mx-auto flex items-center justify-between relative">
+          <div className="flex items-center">
+            <h1 className="text-2xl font-bold bg-gradient-to-br from-amber-600 to-orange-600 dark:from-amber-400 dark:to-orange-500 bg-clip-text text-transparent text-3d-effect tracking-tight select-none">
+                Kalina AI
+            </h1>
+          </div>
+          
+          <div className="flex items-center gap-2">
+              {props.isChatView && (
+                  <>
+                    <ThemeSelector />
                     <button
                       onClick={() => setIsMenuSheetOpen(true)}
-                      className="relative flex items-center justify-center h-9 w-9 overflow-hidden text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-200/50 dark:bg-gray-800/50 rounded-lg hover:bg-gray-300/50 dark:hover:bg-gray-700/70 transition-colors"
+                      className="relative flex items-center justify-center h-10 w-10 text-neutral-600 dark:text-gray-300 hover:text-amber-600 dark:hover:text-amber-400 transition-colors focus:outline-none rounded-full"
                       aria-label="Open menu"
                       title="Menu"
                     >
-                        <Menu className="h-5 w-5" />
+                        <LayoutGrid className="h-6 w-6" />
                     </button>
-                )}
-            </div>
+                  </>
+              )}
           </div>
-        </header>
-
-        {/* Bottom Sheet for Menu */}
-        <div 
-            className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${isMenuSheetOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-            onClick={() => setIsMenuSheetOpen(false)}
-            aria-hidden="true"
-        />
-        <div
-            className={`fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#1e1f22] rounded-t-2xl shadow-2xl transition-transform duration-300 ease-in-out ${isMenuSheetOpen ? 'translate-y-0' : 'translate-y-full'}`}
-            role="dialog"
-            aria-modal="true"
-        >
-            <div className="p-4">
-                <div className="w-10 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full mx-auto mb-4" />
-                <nav className="space-y-1">
-                    <button onClick={() => handleLinkClick(onShowUsage)} className="w-full flex items-center gap-4 p-3 text-left text-base font-medium text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors">
-                        <BarChart3 className="h-6 w-6 text-gray-500 dark:text-gray-400" />
-                        <span>Usage Statistics</span>
-                    </button>
-                    <button onClick={() => handleLinkClick(onShowMemory)} className="w-full flex items-center gap-4 p-3 text-left text-base font-medium text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors">
-                        <BrainCircuit className="h-6 w-6 text-gray-500 dark:text-gray-400" />
-                        <span>Memory Management</span>
-                    </button>
-                    <button onClick={() => handleLinkClick(onShowGallery)} className="w-full flex items-center gap-4 p-3 text-left text-base font-medium text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors">
-                        <GalleryIcon className="h-6 w-6 text-gray-500 dark:text-gray-400" />
-                        <span>Image Gallery</span>
-                    </button>
-                    <div className="border-t border-gray-200 dark:border-gray-600 my-1" />
-                    <div className="p-3">
-                        <div className="flex items-center gap-4 text-gray-700 dark:text-gray-300">
-                             <SlidersHorizontal className="h-6 w-6 text-gray-500 dark:text-gray-400" />
-                             <span className="text-base font-medium">Developer Settings</span>
-                        </div>
-                        <div className="mt-2 pl-10">
-                            <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Console Visibility</label>
-                            <div className="flex gap-2 mt-1">
-                                <button onClick={() => onSetConsoleMode('auto')} className={`px-4 py-1.5 text-sm rounded-lg transition-colors ${consoleMode === 'auto' ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'}`}>
-                                    Automatic
-                                </button>
-                                <button onClick={() => onSetConsoleMode('manual')} className={`px-4 py-1.5 text-sm rounded-lg transition-colors ${consoleMode === 'manual' ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'}`}>
-                                    Manual
-                                </button>
-                            </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-500 mt-1 pl-1">
-                                {consoleMode === 'auto' 
-                                    ? "Button appears on error. Panel opens on first error."
-                                    : "Button is always visible for manual access."
-                                }
-                            </p>
-                        </div>
-                    </div>
-                    <div className="border-t border-gray-200 dark:border-gray-600 my-1" />
-                    <button onClick={() => handleLinkClick(onShowTransparency)} className="w-full flex items-center gap-4 p-3 text-left text-base font-medium text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors">
-                        <Info className="h-6 w-6 text-gray-500 dark:text-gray-400" />
-                        <span>Transparency & About</span>
-                    </button>
-                </nav>
-            </div>
         </div>
+      </header>
+
+      <MenuSheet 
+        isOpen={isMenuSheetOpen}
+        onClose={() => setIsMenuSheetOpen(false)}
+        onShowGallery={props.onShowGallery}
+        onShowMemory={props.onShowMemory}
+        onShowUsage={props.onShowUsage}
+        consoleMode={props.consoleMode}
+        setConsoleMode={props.setConsoleMode}
+      />
     </>
   );
 };

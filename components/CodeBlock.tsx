@@ -1,45 +1,33 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Copy, Check, Play } from 'lucide-react';
-import CodePreviewModal from './CodePreviewModal';
-
-declare const hljs: any;
 
 interface CodeBlockProps {
     language: string;
     code: string;
-    onPersistUpdate: (oldCode: string, newCode: string) => void;
     isStreaming?: boolean;
+    onOpenPreview?: (code: string) => void;
 }
 
-const CodeBlock: React.FC<CodeBlockProps> = ({ language, code: initialCode, onPersistUpdate, isStreaming }) => {
-    const [isCopied, setIsCopied] = useState(false);
-    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-    const [currentCode, setCurrentCode] = useState(initialCode);
-    const codeRef = useRef<HTMLElement>(null);
+// FIX: Declare hljs to inform TypeScript that this global variable exists.
+// It is loaded via a script tag in the main HTML file for syntax highlighting.
+declare const hljs: any;
 
-    useEffect(() => {
-        // If the parent's code changes (e.g., from a re-render), update the local state.
-        setCurrentCode(initialCode);
-    }, [initialCode]);
+const CodeBlock: React.FC<CodeBlockProps> = ({ language, code, isStreaming, onOpenPreview }) => {
+    const [isCopied, setIsCopied] = useState(false);
+    const codeRef = useRef<HTMLElement>(null);
 
     useEffect(() => {
         // When streaming is finished, or code is updated, apply highlighting.
         if (codeRef.current && !isStreaming && typeof hljs !== 'undefined') {
             hljs.highlightElement(codeRef.current);
         }
-    }, [isStreaming, currentCode, language]);
-
-    const handleCodeFixed = (newCode: string) => {
-        setCurrentCode(newCode);
-        onPersistUpdate(initialCode, newCode);
-    };
+    }, [isStreaming, code, language]);
 
     const isRunnable = ['html', 'htmlbars', 'javascript', 'css'].includes(language.toLowerCase());
 
     const handleCopy = async () => {
         try {
-            await navigator.clipboard.writeText(currentCode);
+            await navigator.clipboard.writeText(code);
             setIsCopied(true);
             setTimeout(() => setIsCopied(false), 2000);
         } catch (err) {
@@ -49,24 +37,16 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ language, code: initialCode, onPe
 
     return (
         <>
-            {isRunnable && isPreviewOpen && (
-                <CodePreviewModal 
-                    initialCode={currentCode}
-                    language={language}
-                    onClose={() => setIsPreviewOpen(false)}
-                    onCodeFixed={handleCodeFixed}
-                />
-            )}
-            <div className="bg-gray-100 dark:bg-[#1e1f22] rounded-lg my-4 border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="flex justify-between items-center px-4 py-2 bg-gray-200 dark:bg-gray-800/50">
-                    <span className="text-xs font-sans text-gray-500 dark:text-gray-400 uppercase font-semibold">
+            <div className="rounded-lg my-4 border border-neutral-200 dark:border-gray-700 overflow-hidden">
+                <div className="flex justify-between items-center px-4 py-2 bg-neutral-200 dark:bg-gray-800/50">
+                    <span className="text-xs font-sans text-neutral-500 dark:text-gray-400 uppercase font-semibold">
                         {language || 'code'}
                     </span>
                     <div className="flex items-center gap-4">
                         {isRunnable && (
                              <button
-                                onClick={() => setIsPreviewOpen(true)}
-                                className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+                                onClick={() => onOpenPreview?.(code)}
+                                className="flex items-center gap-1.5 text-xs text-neutral-600 dark:text-gray-300 hover:text-neutral-900 dark:hover:text-white transition-colors"
                                 aria-label="Run code"
                             >
                                 <Play className="h-3.5 w-3.5" />
@@ -75,7 +55,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ language, code: initialCode, onPe
                         )}
                         <button
                             onClick={handleCopy}
-                            className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+                            className="flex items-center gap-1.5 text-xs text-neutral-600 dark:text-gray-300 hover:text-neutral-900 dark:hover:text-white transition-colors"
                             aria-label={isCopied ? 'Copied' : 'Copy code'}
                         >
                             {isCopied ? (
@@ -92,9 +72,10 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ language, code: initialCode, onPe
                         </button>
                     </div>
                 </div>
-                <pre className="p-4 text-sm whitespace-pre overflow-x-auto code-scrollbar">
+                {/* The <pre> element itself should not have padding, as the <code> element inside gets padding from highlight.js themes. */}
+                <pre className="text-sm whitespace-pre overflow-x-auto code-scrollbar">
                     <code ref={codeRef} className={`font-mono hljs language-${language}`}>
-                        {currentCode}
+                        {code}
                     </code>
                 </pre>
             </div>

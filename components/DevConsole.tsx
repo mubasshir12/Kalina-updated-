@@ -1,141 +1,157 @@
-
-
 import React, { useState, useEffect, useRef } from 'react';
-import { Terminal, ChevronDown, Trash2, AlertTriangle, Info, AlertCircle, Sparkles, Copy, Check, Lightbulb } from 'lucide-react';
-import { DevLog, subscribeToLogs, clearDevLogs } from '../services/loggingService';
-import { errorHints, ErrorHint } from '../utils/errorHints';
+import { ConsoleLogEntry, ConsoleMode } from '../types';
+import { useDebug } from '../contexts/DebugContext';
+import { getHintForError } from '../utils/errorHints';
+import { getAiHelpForError } from '../services/debugService';
+import { X, Trash2, Copy, Check, Info, Wand2, LoaderCircle, ChevronDown } from 'lucide-react';
 import MarkdownRenderer from './MarkdownRenderer';
 
 interface DevConsoleProps {
     isOpen: boolean;
     onClose: () => void;
-    onAskAi: (log: DevLog) => void;
+    mode: ConsoleMode;
 }
 
-const Tooltip: React.FC<{ content: React.ReactNode; children: React.ReactNode; }> = ({ content, children }) => (
-    <div className="relative group flex items-center">
-        {children}
-        <div className="absolute bottom-full mb-2 w-64 bg-gray-900 text-white text-xs rounded-md p-2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 shadow-lg">
-            {content}
-        </div>
-    </div>
-);
-
-const LogItem: React.FC<{ log: DevLog; onAskAi: (log: DevLog) => void }> = ({ log, onAskAi }) => {
+const LogEntryItem: React.FC<{ log: ConsoleLogEntry }> = ({ log }) => {
     const [isCopied, setIsCopied] = useState(false);
-    const getLevelStyles = (level: DevLog['level']) => {
-        switch (level) {
-            case 'error': return { Icon: AlertCircle, color: 'text-red-500 dark:text-red-400', bg: 'bg-red-500/10' };
-            case 'warn': return { Icon: AlertTriangle, color: 'text-yellow-500 dark:text-yellow-400', bg: 'bg-yellow-500/10' };
-            case 'info': return { Icon: Info, color: 'text-blue-500 dark:text-blue-400', bg: 'bg-blue-500/10' };
-            case 'ai-response': return { Icon: Sparkles, color: 'text-indigo-500 dark:text-indigo-400', bg: 'bg-indigo-500/10' };
-            default: return { Icon: Terminal, color: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-500/10' };
-        }
-    };
-
-    const { Icon, color, bg } = getLevelStyles(log.level);
-    const matchedHint = log.level === 'error' ? errorHints.find(h => h.matcher.test(log.message)) : null;
+    const [aiHelp, setAiHelp] = useState<string>('');
+    const [isGettingHelp, setIsGettingHelp] = useState(false);
+    const [showLangPrompt, setShowLangPrompt] = useState(false);
+    const [isAiHelpVisible, setIsAiHelpVisible] = useState(false);
+    const hint = getHintForError(log.message);
 
     const handleCopy = () => {
-        const textToCopy = `[${log.level.toUpperCase()}] ${log.timestamp}\nMessage: ${log.message}\nStack: ${log.stack || 'N/A'}`;
+        const textToCopy = `[${log.timestamp}] ${log.message}\n\nStack Trace:\n${log.stack || 'N/A'}`;
         navigator.clipboard.writeText(textToCopy);
         setIsCopied(true);
         setTimeout(() => setIsCopied(false), 2000);
     };
 
+    const handleGetAiHelp = async (language: 'English' | 'Hinglish') => {
+        setShowLangPrompt(false);
+        setIsGettingHelp(true);
+        setIsAiHelpVisible(true);
+        const helpText = await getAiHelpForError({ message: log.message, stack: log.stack }, language);
+        setAiHelp(helpText);
+        setIsGettingHelp(false);
+    };
+
     return (
-        <div className={`p-2 border-b border-gray-100 dark:border-gray-800 ${bg}`}>
-            <div className={`flex items-center justify-between font-semibold ${color}`}>
-                <div className="flex items-center gap-2">
-                    <Icon className="h-4 w-4 flex-shrink-0" />
-                    <span>{log.level.toUpperCase()}</span>
-                    <span className="text-gray-400 dark:text-gray-600 font-sans">{log.timestamp}</span>
+        <div className="p-3 border-b border-neutral-200 dark:border-gray-700/50">
+            <div className="flex justify-between items-start gap-4">
+                <div className="flex-1">
+                    <span className="text-xs text-neutral-400 dark:text-gray-500 font-mono">{log.timestamp}</span>
+                    <p className="text-sm text-red-600 dark:text-red-400 font-semibold break-words whitespace-pre-wrap">{log.message}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                    {log.level === 'error' && matchedHint && (
-                        <Tooltip content={
-                            <div>
-                                <p className="font-bold">{matchedHint.hint}</p>
-                                <p className="mt-1">{matchedHint.suggestion}</p>
-                            </div>
-                        }>
-                            <Lightbulb className="h-4 w-4 text-yellow-500" />
-                        </Tooltip>
-                    )}
-                     <button onClick={handleCopy} className="p-1 rounded-full hover:bg-gray-500/20" aria-label="Copy Log">
-                        {isCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4 text-gray-500" />}
+                <div className="flex items-center gap-1">
+                    <button onClick={handleCopy} className="p-1.5 rounded-full hover:bg-neutral-200 dark:hover:bg-gray-700 transition-colors">
+                        {isCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4 text-neutral-500 dark:text-gray-400" />}
                     </button>
-                    {log.level === 'error' && (
-                        <button onClick={() => onAskAi(log)} className="p-1 rounded-full hover:bg-gray-500/20" aria-label="Ask AI to fix">
-                            <Sparkles className="h-4 w-4 text-indigo-500" />
+                    {!hint && (
+                        <button onClick={() => setShowLangPrompt(true)} disabled={isGettingHelp} className="p-1.5 rounded-full hover:bg-neutral-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50">
+                            {isGettingHelp ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4 text-amber-500 dark:text-amber-400" />}
                         </button>
                     )}
                 </div>
             </div>
-             {log.level === 'ai-response' ? (
-                <div className="mt-1 text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-pre:my-2">
-                    <MarkdownRenderer content={log.message} onContentUpdate={() => {}} isStreaming={false} />
-                </div>
-            ) : (
-                <pre className="mt-1 whitespace-pre-wrap break-words text-gray-700 dark:text-gray-300">{log.message}</pre>
-            )}
-            {log.stack && (
-                <details className="mt-1">
-                    <summary className="cursor-pointer text-gray-500 dark:text-gray-400 text-xs">Show Stack Trace</summary>
-                    <pre className="mt-1 p-2 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] whitespace-pre-wrap break-words">{log.stack}</pre>
+
+            {hint && (
+                <details className="mt-2 group">
+                    <summary className="text-xs text-blue-600 dark:text-blue-400 cursor-pointer flex items-center gap-1 font-medium list-none [&::-webkit-details-marker]:hidden">
+                        <Info className="h-4 w-4" />
+                        <span>Show Hint for "{hint.title}"</span>
+                        <ChevronDown className="h-4 w-4 ml-auto transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800/50">
+                        <h4 className="text-sm font-bold text-blue-800 dark:text-blue-200 mb-1">{hint.title}</h4>
+                        <p className="text-sm text-neutral-700 dark:text-gray-300 mb-2">{hint.description}</p>
+                        <div>
+                            <p className="text-xs font-semibold text-neutral-600 dark:text-gray-400">Suggested Solution:</p>
+                            <p className="font-mono text-xs bg-neutral-100 dark:bg-gray-800 p-1.5 rounded mt-1 text-neutral-700 dark:text-gray-300 whitespace-pre-wrap">{hint.solution}</p>
+                        </div>
+                    </div>
                 </details>
+            )}
+
+            {log.stack && (
+                <details className="mt-2">
+                    <summary className="text-xs text-neutral-500 dark:text-gray-400 cursor-pointer">Show Stack Trace</summary>
+                    <pre className="mt-1 p-2 bg-neutral-100 dark:bg-gray-800/50 rounded-md text-xs text-neutral-600 dark:text-gray-300 whitespace-pre-wrap break-all">
+                        {log.stack}
+                    </pre>
+                </details>
+            )}
+             {showLangPrompt && !isGettingHelp && (
+                <div className="mt-2 p-2 bg-neutral-100 dark:bg-gray-800/60 rounded-lg border border-neutral-200 dark:border-gray-700/50">
+                    <p className="text-xs font-semibold text-neutral-700 dark:text-gray-300 mb-2">Choose response language:</p>
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => handleGetAiHelp('English')} className="flex-1 px-3 py-1.5 text-xs font-medium text-neutral-800 dark:text-gray-200 bg-white dark:bg-gray-700/50 rounded-md hover:bg-neutral-200 dark:hover:bg-gray-600/50 border border-neutral-300 dark:border-gray-600 transition-colors">English</button>
+                        <button onClick={() => handleGetAiHelp('Hinglish')} className="flex-1 px-3 py-1.5 text-xs font-medium text-neutral-800 dark:text-gray-200 bg-white dark:bg-gray-700/50 rounded-md hover:bg-neutral-200 dark:hover:bg-gray-600/50 border border-neutral-300 dark:border-gray-600 transition-colors">Hinglish</button>
+                    </div>
+                </div>
+            )}
+            {isAiHelpVisible && (
+                <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800/50">
+                    <h4 className="text-sm font-bold text-amber-800 dark:text-amber-200 mb-2">AI Diagnosis</h4>
+                    <p className="text-xs text-neutral-500 dark:text-gray-400 mb-2 font-mono bg-neutral-100 dark:bg-gray-800 p-1.5 rounded-md overflow-x-auto">
+                        Diagnosed: {log.message}
+                    </p>
+                    {isGettingHelp ? (
+                        <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
+                            <LoaderCircle className="h-4 w-4 animate-spin" />
+                            <span>Analyzing error...</span>
+                        </div>
+                    ) : (
+                        <div className="text-sm text-neutral-800 dark:text-gray-200 prose prose-sm dark:prose-invert max-w-none">
+                           <MarkdownRenderer content={aiHelp} onContentUpdate={() => {}} />
+                        </div>
+                    )}
+                </div>
             )}
         </div>
     );
 };
 
 
-const DevConsole: React.FC<DevConsoleProps> = ({ isOpen, onClose, onAskAi }) => {
-    const [logs, setLogs] = useState<DevLog[]>([]);
-    const logsEndRef = useRef<HTMLDivElement>(null);
+const DevConsole: React.FC<DevConsoleProps> = ({ isOpen, onClose }) => {
+    const { logs, clearLogs } = useDebug();
+    const consoleBodyRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const unsubscribe = subscribeToLogs(setLogs);
-        return () => unsubscribe();
-    }, []);
-
-    useEffect(() => {
-        if (isOpen) {
-            logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (logs.length > 0) {
+            consoleBodyRef.current?.scrollTo({ top: consoleBodyRef.current.scrollHeight, behavior: 'smooth' });
         }
-    }, [logs, isOpen]);
+    }, [logs]);
     
+    if (!isOpen) return null;
+
     return (
-        <div 
-            className={`fixed bottom-0 left-0 right-0 z-[9998] bg-white dark:bg-[#131314] border-t border-gray-200 dark:border-gray-700 shadow-2xl transition-transform duration-300 ease-in-out ${
-                isOpen ? 'translate-y-0' : 'translate-y-full'
-            }`}
-            style={{ height: '50vh' }}
-        >
-            <div className="flex flex-col h-full">
-                <header className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} aria-hidden="true">
+            <div
+                className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#1e1f22] rounded-t-2xl shadow-2xl transition-transform duration-300 ease-in-out translate-y-0 h-[60vh] flex flex-col"
+                role="dialog"
+                aria-modal="true"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <header className="p-4 border-b border-neutral-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
+                    <h2 className="text-lg font-semibold text-neutral-800 dark:text-gray-200">Developer Console</h2>
                     <div className="flex items-center gap-2">
-                        <Terminal className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                        <h2 className="font-semibold text-gray-800 dark:text-gray-200">Developer Console</h2>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <button onClick={clearDevLogs} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Clear logs">
-                            <Trash2 className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                        <button onClick={clearLogs} className="p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-gray-700 transition-colors" aria-label="Clear logs">
+                            <Trash2 className="h-5 w-5 text-neutral-500 dark:text-gray-400" />
                         </button>
-                        <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Close console">
-                            <ChevronDown className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                        <button onClick={onClose} className="p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-gray-700 transition-colors" aria-label="Close console">
+                            <X className="h-5 w-5 text-neutral-500 dark:text-gray-400" />
                         </button>
                     </div>
                 </header>
-                <div className="flex-1 overflow-y-auto p-2 font-mono text-xs">
+                <div ref={consoleBodyRef} className="flex-1 overflow-y-auto">
                     {logs.length === 0 ? (
-                        <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500">
-                            No logs yet.
+                        <div className="flex items-center justify-center h-full text-neutral-400 dark:text-gray-500">
+                            No errors logged yet.
                         </div>
                     ) : (
-                        logs.map(log => <LogItem key={log.id} log={log} onAskAi={onAskAi} />)
+                        logs.map(log => <LogEntryItem key={log.id} log={log} />)
                     )}
-                     <div ref={logsEndRef} />
                 </div>
             </div>
         </div>

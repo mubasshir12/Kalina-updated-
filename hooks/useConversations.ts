@@ -1,6 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Conversation, ChatMessage as ChatMessageType } from '../types';
-import { logDev } from '../services/loggingService';
 
 export const useConversations = () => {
     const [conversations, setConversations] = useState<Conversation[]>(() => {
@@ -9,7 +8,6 @@ export const useConversations = () => {
             return storedConvos ? JSON.parse(storedConvos) : [];
         } catch (e) {
             console.error("Failed to parse conversations from localStorage", e);
-            logDev('error', "Failed to parse conversations from localStorage", e);
             return [];
         }
     });
@@ -27,27 +25,15 @@ export const useConversations = () => {
             return null;
         } catch (e) {
             console.error("Failed to parse active conversation ID from localStorage", e);
-            logDev('error', "Failed to parse active conversation ID from localStorage", e);
             return null;
         }
     });
 
     useEffect(() => {
         try {
-            // Create a version of conversations without large base64 data for storage.
-            const conversationsForStorage = conversations.map(convo => ({
-                ...convo,
-                messages: convo.messages.map(msg => {
-                    // Destructure to remove image and file, but keep everything else
-                    // including hasImage and fileInfo which are preserved in restOfMsg.
-                    const { image, file, ...restOfMsg } = msg;
-                    return restOfMsg;
-                })
-            }));
-            localStorage.setItem('kalina_conversations', JSON.stringify(conversationsForStorage));
+            localStorage.setItem('kalina_conversations', JSON.stringify(conversations));
         } catch (e) {
             console.error("Failed to save conversations to localStorage", e);
-            logDev('error', "Failed to save conversations to localStorage", e);
         }
     }, [conversations]);
 
@@ -60,7 +46,6 @@ export const useConversations = () => {
             }
         } catch (e) {
             console.error("Failed to save active conversation ID to localStorage", e);
-            logDev('error', "Failed to save active conversation ID to localStorage", e);
         }
     }, [activeConversationId]);
 

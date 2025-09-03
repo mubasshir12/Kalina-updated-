@@ -1,8 +1,8 @@
-
 import React, { useState, KeyboardEvent, useRef, ChangeEvent, useEffect } from 'react';
-import { Suggestion, Tool } from '../types';
-import { Sparkles, ChevronDown, X, Paperclip, ArrowUp, Globe, BrainCircuit, Image, History, Expand, File, Presentation, FileText, Camera, Languages, Link } from 'lucide-react';
+import { Suggestion, Tool, ChatModel, ModelInfo } from '../types';
+import { Sparkles, ChevronDown, X, Paperclip, ArrowUp, Globe, BrainCircuit, Image, History, Expand, File, Presentation, FileText, Camera, Languages, Link, ClipboardPaste } from 'lucide-react';
 import ImageModal from './ImageModal';
+import ModelSelector from './ModelSelector';
 
 interface ChatInputProps {
   onSendMessage: (message: string, image?: { base64: string; mimeType: string; }, file?: { base64: string; mimeType: string; name: string; size: number; }) => void;
@@ -15,6 +15,11 @@ interface ChatInputProps {
   onOpenHistory: () => void;
   conversationCount: number;
   onCancelStream: () => void;
+  models: ModelInfo[];
+  selectedChatModel: ChatModel;
+  onSelectChatModel: (model: ChatModel) => void;
+  apiKey: string | null;
+  onOpenApiKeyModal: () => void;
 }
 
 const tools: { id: Tool; name: string; description: string; icon: React.ElementType }[] = [
@@ -24,12 +29,6 @@ const tools: { id: Tool; name: string; description: string; icon: React.ElementT
     { id: 'thinking', name: 'Thinking', description: 'Shows the AI\'s step-by-step thought process.', icon: BrainCircuit },
     { id: 'imageGeneration', name: 'Image Generation', description: 'Creates or edits an image from a prompt.', icon: Image },
     { id: 'translator', name: 'Translator', description: 'Translates text between languages.', icon: Languages },
-];
-
-const descriptionsToAnimate = [
-    "Detects the web through automatic detection",
-    "Makes decisions through automatic thinking",
-    "Creates images through automatic decisions"
 ];
 
 const FileIcon: React.FC<{ mimeType: string; className?: string; }> = ({ mimeType, className = "h-6 w-6" }) => {
@@ -42,7 +41,7 @@ const FileIcon: React.FC<{ mimeType: string; className?: string; }> = ({ mimeTyp
     if (mimeType.includes('plain')) {
         return <FileText className={`${className} text-blue-500 dark:text-blue-400`} />;
     }
-    return <File className={`${className} text-gray-500 dark:text-gray-400`} />;
+    return <File className={`${className} text-neutral-500 dark:text-gray-400`} />;
 };
 
 const ChatInput: React.FC<ChatInputProps> = ({ 
@@ -55,9 +54,15 @@ const ChatInput: React.FC<ChatInputProps> = ({
     onClearSuggestion,
     onOpenHistory,
     conversationCount,
-    onCancelStream
+    onCancelStream,
+    models,
+    selectedChatModel,
+    onSelectChatModel,
+    apiKey,
+    onOpenApiKeyModal
 }) => {
   const [input, setInput] = useState('');
+  const [urlInput, setUrlInput] = useState('');
   const [image, setImage] = useState<{ base64: string; mimeType: string; } | null>(null);
   const [file, setFile] = useState<{ base64: string; mimeType: string; name: string; size: number; } | null>(null);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
@@ -70,9 +75,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const toolsMenuRef = useRef<HTMLDivElement>(null);
   const attachmentMenuRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  
-  const [animatedDescription, setAnimatedDescription] = useState(descriptionsToAnimate[0]);
-  const [isFading, setIsFading] = useState(false);
   
   const formatTime = (ms: number) => {
     if (!ms || ms < 0) return '0.0s';
@@ -101,30 +103,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
     }
   }, [activeSuggestion]);
   
-  useEffect(() => {
-    if (selectedTool !== 'smart' || isToolsOpen) {
-      return; // Do nothing if not in smart mode or if menu is open
-    }
-
-    let currentIndex = 0;
-    const intervalId = setInterval(() => {
-      setIsFading(true);
-
-      setTimeout(() => {
-        currentIndex = (currentIndex + 1) % descriptionsToAnimate.length;
-        setAnimatedDescription(descriptionsToAnimate[currentIndex]);
-        setIsFading(false);
-      }, 300); // fade out duration
-    }, 2000); // 2 second interval
-
-    return () => {
-      clearInterval(intervalId);
-      setIsFading(false);
-      setAnimatedDescription(descriptionsToAnimate[0]);
-    };
-  }, [selectedTool, isToolsOpen]);
-
-
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
@@ -156,9 +134,15 @@ const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   const handleSend = () => {
-    if ((input.trim() || image || file) && !isLoading) {
-      onSendMessage(input, image ?? undefined, file ?? undefined);
+    let messageToSend = input;
+    if (selectedTool === 'urlReader' && urlInput.trim()) {
+      messageToSend = `${urlInput.trim()}\n${input.trim()}`;
+    }
+
+    if ((messageToSend.trim() || image || file) && !isLoading) {
+      onSendMessage(messageToSend, image ?? undefined, file ?? undefined);
       setInput('');
+      setUrlInput('');
       setImage(null);
       setFile(null);
     }
@@ -200,6 +184,15 @@ const ChatInput: React.FC<ChatInputProps> = ({
       reader.readAsDataURL(pastedFile);
     }
   }
+
+  const handlePasteUrl = async () => {
+    try {
+        const text = await navigator.clipboard.readText();
+        setUrlInput(text);
+    } catch (error) {
+        console.error('Failed to read clipboard contents: ', error);
+    }
+  };
   
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -222,7 +215,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
           return image ? "Describe the edits you want to make..." : "Enter a prompt to generate an image...";
       }
       if (selectedTool === 'urlReader') {
-          return "Enter a URL and ask a question...";
+          return "Ask a question about the URL above...";
       }
       if (image) return "Describe the image or ask a question...";
       if (file) return `Ask a question about ${file.name}...`;
@@ -239,6 +232,19 @@ const ChatInput: React.FC<ChatInputProps> = ({
     setIsAttachmentMenuOpen(false);
   };
 
+  const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // If the click is on a button or an element inside a button, do nothing.
+    // This prevents the container click from firing when interacting with buttons,
+    // like the attachment preview zoom or remove buttons.
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || (attachmentMenuRef.current && attachmentMenuRef.current.contains(target))) {
+      return;
+    }
+    textareaRef.current?.focus();
+  };
+
+  const isSendDisabled = isLoading || (!image && !file && !input.trim() && (selectedTool !== 'urlReader' || !urlInput.trim()));
+
   return (
     <>
       {isPreviewModalOpen && image && (
@@ -247,36 +253,39 @@ const ChatInput: React.FC<ChatInputProps> = ({
               onClose={() => setIsPreviewModalOpen(false)}
           />
       )}
-      <div className="flex flex-col">
-          <div className="flex items-stretch justify-between mb-3 px-1 gap-2">
+      <div className="flex flex-col gap-2">
+           {/* Hidden file inputs */}
+          <input ref={cameraInputRef} type="file" capture="user" accept="image/*" onChange={handleFileChange} className="hidden" />
+          <input ref={imageInputRef} type="file" accept="image/png, image/jpeg, image/webp" onChange={handleFileChange} className="hidden" />
+          <input ref={fileInputRef} type="file" accept="application/pdf, text/plain" onChange={handleFileChange} className="hidden" />
+          
+          <div className="flex items-stretch justify-between px-1 gap-2">
               <div className="relative" ref={toolsMenuRef}>
                    <button 
                       onClick={() => setIsToolsOpen(!isToolsOpen)}
-                      className="flex items-center gap-3 px-3 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-[#2E2F33] border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700/70 transition-colors h-full"
+                      className="flex items-center gap-3 px-3 py-2 text-neutral-700 dark:text-gray-300 bg-neutral-100 dark:bg-[#2E2F33] border border-neutral-300 dark:border-gray-600 rounded-xl hover:bg-neutral-200 dark:hover:bg-gray-700/70 transition-colors h-full"
                    >
-                      <SelectedIcon className="h-5 w-5 text-indigo-500 dark:text-indigo-400 flex-shrink-0" />
+                      <SelectedIcon className="h-5 w-5 text-amber-500 dark:text-amber-400 flex-shrink-0" />
                        <div className="text-left">
                           <p className="text-sm font-medium leading-none">{selectedToolObject.name}</p>
-                          <p className={`text-[10px] text-gray-500 dark:text-gray-400 transition-opacity duration-300 h-4 mt-0.5 ${selectedTool === 'smart' && isFading ? 'opacity-0' : 'opacity-100'}`}>
-                              {selectedTool === 'smart' ? animatedDescription : selectedToolObject.description}
-                          </p>
+                           <p className="text-xs text-neutral-500 dark:text-gray-400">{selectedToolObject.description}</p>
                       </div>
                       <ChevronDown className={`w-4 h-4 transition-transform ${isToolsOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {isToolsOpen && (
-                      <div className="absolute bottom-full mb-2 w-72 bg-white dark:bg-[#2E2F33] border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden z-20">
+                      <div className="absolute bottom-full mb-2 w-72 bg-white dark:bg-[#2E2F33] border border-neutral-200 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden z-20">
                          {tools.map(tool => {
                              const ToolIcon = tool.icon;
                              return (
                                  <button 
                                       key={tool.id}
                                       onClick={() => { onToolChange(tool.id); setIsToolsOpen(false); }}
-                                      className="w-full text-left p-3 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors flex items-center gap-3"
+                                      className="w-full text-left p-3 text-neutral-800 dark:text-gray-200 hover:bg-neutral-100 dark:hover:bg-gray-700/70 transition-colors flex items-center gap-3"
                                  >
-                                      <ToolIcon className="h-5 w-5 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                                      <ToolIcon className="h-5 w-5 text-neutral-500 dark:text-gray-400 flex-shrink-0" />
                                       <div>
                                           <p className="font-semibold text-sm">{tool.name}</p>
-                                          <p className="text-xs text-gray-500 dark:text-gray-400">{tool.description}</p>
+                                          <p className="text-xs text-neutral-500 dark:text-gray-400">{tool.description}</p>
                                       </div>
                                  </button>
                              )
@@ -287,14 +296,14 @@ const ChatInput: React.FC<ChatInputProps> = ({
               <div className="relative">
                 <button
                   onClick={onOpenHistory}
-                  className="p-3 bg-gray-100 dark:bg-[#2E2F33] border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700/70 transition-colors h-full"
+                  className="p-3 bg-neutral-100 dark:bg-[#2E2F33] border border-neutral-300 dark:border-gray-600 rounded-xl text-neutral-700 dark:text-gray-300 hover:bg-neutral-200 dark:hover:bg-gray-700/70 transition-colors h-full"
                   aria-label="Open chat history"
                   title="History"
                 >
                     <History className="h-5 w-5" />
                 </button>
                 {conversationCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-xs font-medium text-white pointer-events-none">
+                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-600 text-white pointer-events-none text-xs font-medium">
                         {conversationCount}
                     </span>
                 )}
@@ -302,14 +311,14 @@ const ChatInput: React.FC<ChatInputProps> = ({
           </div>
           
           {activeSuggestion && (
-            <div className="mb-2 p-2 pl-3 bg-indigo-50 dark:bg-indigo-900/40 border border-indigo-200 dark:border-indigo-800 rounded-xl flex self-start items-center gap-2 text-sm">
+            <div className="p-2 pl-3 bg-amber-50 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800 rounded-xl flex self-start items-center gap-2 text-sm">
               {activeSuggestion.icon}
-              <span className="text-indigo-800 dark:text-indigo-200 line-clamp-1 font-medium">
+              <span className="text-amber-800 dark:text-amber-200 line-clamp-1 font-medium">
                   {activeSuggestion.text}
               </span>
               <button
                   onClick={handleClearSuggestionWithInput}
-                  className="p-1.5 rounded-full text-indigo-500 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-800/60 transition-colors flex-shrink-0"
+                  className="p-1.5 rounded-full text-amber-500 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-800/60 transition-colors flex-shrink-0"
                   aria-label="Clear suggestion"
               >
                   <X className="h-4 w-4" />
@@ -317,84 +326,33 @@ const ChatInput: React.FC<ChatInputProps> = ({
             </div>
           )}
 
-          <div className="flex items-end gap-3">
-              <div className="relative flex items-end gap-2">
-                  {/* Hidden file inputs */}
-                  <input ref={cameraInputRef} type="file" capture="user" accept="image/*" onChange={handleFileChange} className="hidden" />
-                  <input ref={imageInputRef} type="file" accept="image/png, image/jpeg, image/webp" onChange={handleFileChange} className="hidden" />
-                  <input ref={fileInputRef} type="file" accept="application/pdf, text/plain" onChange={handleFileChange} className="hidden" />
+          {selectedTool === 'urlReader' && (
+            <div className="relative">
+                <input
+                    type="text"
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    placeholder="Enter a URL to read..."
+                    className="w-full bg-neutral-100 dark:bg-[#2E2F33] border border-neutral-300 dark:border-gray-600 rounded-lg py-2.5 pl-4 pr-12 focus:outline-none focus:ring-2 focus:ring-amber-500 text-neutral-800 dark:text-gray-200"
+                    disabled={isLoading}
+                />
+                <button
+                    onClick={handlePasteUrl}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-neutral-500 dark:text-gray-400 hover:bg-neutral-200 dark:hover:bg-gray-700/70 rounded-full transition-colors"
+                    aria-label="Paste URL"
+                    disabled={isLoading}
+                >
+                    <ClipboardPaste className="h-5 w-5" />
+                </button>
+            </div>
+          )}
 
-                  {image && (
-                      <div className="relative flex-shrink-0">
-                          <div className="w-14 h-14 rounded-xl relative group bg-gray-200 dark:bg-gray-800 ring-2 ring-indigo-500">
-                              <img
-                                  src={`data:${image.mimeType};base64,${image.base64}`}
-                                  alt="Image preview"
-                                  className="w-full h-full object-cover rounded-xl"
-                              />
-                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
-                                  <button
-                                      onClick={() => setIsPreviewModalOpen(true)}
-                                      className="p-1.5 bg-white/20 text-white rounded-full backdrop-blur-sm hover:bg-white/30"
-                                      aria-label="Zoom image"
-                                  >
-                                      <Expand className="h-5 w-5" />
-                                  </button>
-                              </div>
-                          </div>
-                          <button
-                              onClick={removeImage}
-                              className="absolute -top-1.5 -right-1.5 p-1 bg-red-600 text-white rounded-full hover:bg-red-500 transition-colors z-10"
-                              aria-label="Remove image"
-                          >
-                              <X className="h-3 w-3" />
-                          </button>
-                      </div>
-                  )}
-
-                  {file && (
-                     <div className="relative flex-shrink-0">
-                        <div className="w-14 h-14 rounded-xl flex flex-col items-center justify-center p-1 text-center bg-gray-200 dark:bg-gray-800 ring-2 ring-indigo-500">
-                           <FileIcon mimeType={file.mimeType} className="h-5 w-5" />
-                           <p className="text-xs text-gray-500 dark:text-gray-400 truncate w-full mt-1">{file.name}</p>
-                        </div>
-                         <button
-                              onClick={removeFile}
-                              className="absolute -top-1.5 -right-1.5 p-1 bg-red-600 text-white rounded-full hover:bg-red-500 transition-colors z-10"
-                              aria-label="Remove file"
-                          >
-                              <X className="h-3 w-3" />
-                          </button>
-                     </div>
-                  )}
-              </div>
-              <div className="relative flex-1">
-                  {!image && !file && (
-                      <div ref={attachmentMenuRef} className="absolute left-2 bottom-1.5 z-10">
-                          <button
-                              onClick={() => setIsAttachmentMenuOpen(prev => !prev)}
-                              disabled={isLoading}
-                              className="flex items-center justify-center w-10 h-10 p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#2E2F33] hover:text-gray-800 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                              aria-label="Attach file"
-                          >
-                              <Paperclip className="h-6 w-6" />
-                          </button>
-                          {isAttachmentMenuOpen && (
-                            <div className="absolute bottom-full mb-2 w-48 bg-white dark:bg-[#2E2F33] border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden">
-                                <button onClick={() => handleTriggerInput(cameraInputRef)} className="w-full flex items-center gap-3 p-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors">
-                                    <Camera className="w-4 h-4" /> Take Photo
-                                </button>
-                                <button onClick={() => handleTriggerInput(imageInputRef)} className="w-full flex items-center gap-3 p-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors">
-                                    <Image className="w-4 h-4" /> Upload Image
-                                </button>
-                                <button onClick={() => handleTriggerInput(fileInputRef)} className="w-full flex items-center gap-3 p-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors">
-                                    <File className="w-4 h-4" /> Upload File
-                                </button>
-                            </div>
-                          )}
-                      </div>
-                  )}
-                  <textarea
+          <div 
+            onClick={handleContainerClick}
+            className="bg-neutral-200 dark:bg-[#202123] rounded-t-3xl rounded-b-3xl px-3 pt-4 pb-3 flex flex-col justify-between min-h-[5rem] cursor-text"
+          >
+            <div className="flex-1">
+                 <textarea
                       ref={textareaRef}
                       rows={1}
                       value={input}
@@ -403,40 +361,123 @@ const ChatInput: React.FC<ChatInputProps> = ({
                       onPaste={handlePaste}
                       placeholder={placeholderText()}
                       disabled={isLoading}
-                      className={`w-full bg-gray-100 dark:bg-[#1e1f22] border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 rounded-2xl py-2.5 pr-14 min-h-[3.5rem] focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300 disabled:opacity-50 resize-none max-h-[8rem] overflow-y-auto scrollbar-hide ${image || file ? 'pl-4' : 'pl-12'}`}
+                      className="w-full bg-transparent text-neutral-800 dark:text-gray-200 placeholder:text-neutral-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-0 transition-all duration-300 disabled:opacity-50 resize-none max-h-[8rem] overflow-y-auto scrollbar-hide cursor-text"
                   />
-                  <button
-                      onClick={isLoading ? onCancelStream : handleSend}
-                      disabled={!isLoading && (!input.trim() && !image && !file)}
-                      className={`absolute right-2 bottom-1.5 mb-[0.375rem] flex items-center justify-center transition-all duration-300 ${
-                          isLoading 
-                              ? 'bg-red-600 hover:bg-red-500 h-10 rounded-full' 
-                              : 'bg-indigo-600 hover:bg-indigo-500 text-white disabled:bg-gray-400 dark:disabled:bg-gray-500 disabled:cursor-not-allowed w-10 h-10 rounded-full'
-                      }`}
-                      aria-label={isLoading ? `Stop generating (${formatTime(elapsedTime)})` : "Send message"}
-                  >
-                      {isLoading ? (
-                        <div className="flex items-center justify-center gap-2 px-3 text-white w-full">
-                            <div className="relative w-6 h-6">
-                                <div 
-                                    className="w-full h-full animate-spin"
-                                    style={{
-                                        borderRadius: '50%',
-                                        border: '2px solid white',
-                                        borderTopColor: 'transparent',
-                                    }}
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="w-2.5 h-2.5 bg-white" />
-                                </div>
-                            </div>
-                            <span className="text-sm font-mono font-semibold">{formatTime(elapsedTime)}</span>
+            </div>
+            <div className="flex justify-between items-end mt-2">
+                <div className="flex items-end">
+                    {!(image || file) ? (
+                        <div ref={attachmentMenuRef} className="relative">
+                            <button
+                                onClick={() => setIsAttachmentMenuOpen(prev => !prev)}
+                                disabled={isLoading}
+                                className="flex items-center justify-center w-10 h-10 p-2 rounded-full text-neutral-600 dark:text-gray-300 hover:bg-neutral-300/50 dark:hover:bg-gray-700/70 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                aria-label="Attach file"
+                            >
+                                <Paperclip className="h-6 w-6" />
+                            </button>
+                            {isAttachmentMenuOpen && (
+                              <div className="absolute bottom-full mb-2 w-48 bg-white dark:bg-[#2E2F33] border border-neutral-200 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden">
+                                  <button onClick={() => handleTriggerInput(cameraInputRef)} className="w-full flex items-center gap-3 p-2.5 text-sm text-neutral-700 dark:text-gray-300 hover:bg-neutral-100 dark:hover:bg-gray-700/70 transition-colors">
+                                      <Camera className="w-4 h-4" /> Take Photo
+                                  </button>
+                                  <button onClick={() => handleTriggerInput(imageInputRef)} className="w-full flex items-center gap-3 p-2.5 text-sm text-neutral-700 dark:text-gray-300 hover:bg-neutral-100 dark:hover:bg-gray-700/70 transition-colors">
+                                      <Image className="w-4 h-4" /> Upload Image
+                                  </button>
+                                  <button onClick={() => handleTriggerInput(fileInputRef)} className="w-full flex items-center gap-3 p-2.5 text-sm text-neutral-700 dark:text-gray-300 hover:bg-neutral-100 dark:hover:bg-gray-700/70 transition-colors">
+                                      <File className="w-4 h-4" /> Upload File
+                                  </button>
+                              </div>
+                            )}
                         </div>
-                      ) : (
-                        <ArrowUp className="h-6 w-6" />
-                      )}
-                  </button>
-              </div>
+                    ) : (
+                        <div className="flex items-center gap-2">
+                            {image && (
+                              <div className="relative flex-shrink-0">
+                                  <div className="w-14 h-14 rounded-xl relative group bg-neutral-200 dark:bg-gray-800 ring-2 ring-amber-500">
+                                      <img
+                                          src={`data:${image.mimeType};base64,${image.base64}`}
+                                          alt="Image preview"
+                                          className="w-full h-full object-cover rounded-xl"
+                                      />
+                                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
+                                          <button
+                                              onClick={() => setIsPreviewModalOpen(true)}
+                                              className="p-1.5 bg-white/20 text-white rounded-full backdrop-blur-sm hover:bg-white/30"
+                                              aria-label="Zoom image"
+                                          >
+                                              <Expand className="h-5 w-5" />
+                                          </button>
+                                      </div>
+                                  </div>
+                                  <button
+                                      onClick={removeImage}
+                                      className="absolute -top-1.5 -right-1.5 p-1 bg-red-600 text-white rounded-full hover:bg-red-500 transition-colors z-10"
+                                      aria-label="Remove image"
+                                  >
+                                      <X className="h-3 w-3" />
+                                  </button>
+                              </div>
+                            )}
+                            {file && (
+                                <div className="relative flex-shrink-0">
+                                    <div className="w-14 h-14 rounded-xl flex flex-col items-center justify-center p-1 text-center bg-neutral-200 dark:bg-gray-800 ring-2 ring-amber-500">
+                                    <FileIcon mimeType={file.mimeType} className="h-5 w-5" />
+                                    <p className="text-xs text-neutral-500 dark:text-gray-400 truncate w-full mt-1">{file.name}</p>
+                                    </div>
+                                    <button
+                                        onClick={removeFile}
+                                        className="absolute -top-1.5 -right-1.5 p-1 bg-red-600 text-white rounded-full hover:bg-red-500 transition-colors z-10"
+                                        aria-label="Remove file"
+                                    >
+                                        <X className="h-3 w-3" />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                <ModelSelector
+                    models={models}
+                    selectedChatModel={selectedChatModel}
+                    onSelectChatModel={onSelectChatModel}
+                    apiKey={apiKey}
+                    onOpenApiKeyModal={onOpenApiKeyModal}
+                />
+
+                <button
+                    onClick={isLoading ? onCancelStream : handleSend}
+                    disabled={isSendDisabled}
+                    className={`flex items-center justify-center transition-all duration-300 ${
+                        isLoading 
+                            ? 'bg-red-600 hover:bg-red-500 h-10 rounded-full' 
+                            : 'bg-black dark:bg-white text-white dark:text-black disabled:bg-neutral-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed w-10 h-10 rounded-full'
+                    }`}
+                    aria-label={isLoading ? `Stop generating (${formatTime(elapsedTime)})` : "Send message"}
+                >
+                    {isLoading ? (
+                      <div className="flex items-center justify-center gap-2 px-3 text-white w-full">
+                          <div className="relative w-6 h-6">
+                              <div 
+                                  className="w-full h-full animate-spin"
+                                  style={{
+                                      borderRadius: '50%',
+                                      border: '2px solid white',
+                                      borderTopColor: 'transparent',
+                                  }}
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="w-2.5 h-2.5 bg-white" />
+                              </div>
+                          </div>
+                          <span className="text-sm font-mono font-semibold">{formatTime(elapsedTime)}</span>
+                      </div>
+                    ) : (
+                      <ArrowUp className="h-6 w-6" />
+                    )}
+                </button>
+            </div>
           </div>
       </div>
     </>

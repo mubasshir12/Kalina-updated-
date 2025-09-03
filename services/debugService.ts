@@ -1,30 +1,34 @@
-
 import { getAiClient } from "./aiClient";
-import { logDev } from "./loggingService";
-import { DevLog } from './loggingService';
 
-const systemInstruction = `You are an expert AI software engineer specializing in debugging frontend JavaScript and React code. Analyze the provided error message and stack trace.
-
-**Your Task:**
-1.  **Explain the Error:** In simple terms, explain what the error means.
-2.  **Identify the Cause:** Based on the stack trace, pinpoint the likely source of the problem in the code.
-3.  **Provide a Solution:** Offer a clear, concise code snippet or step-by-step instructions to fix the issue.
-
-Respond ONLY with the explanation and solution in well-formatted Markdown. Do not add any conversational fluff or greetings.`;
-
-export const explainError = async (log: DevLog): Promise<string> => {
+export const getAiHelpForError = async (
+    error: { message: string, stack?: string },
+    language: 'English' | 'Hinglish'
+): Promise<string> => {
     const ai = getAiClient();
+
+    const languageInstruction = language === 'Hinglish'
+        ? "\n\n**IMPORTANT:** You MUST provide your entire response in Hinglish (a mix of Hindi and English, using roman script)."
+        : "\n\n**IMPORTANT:** You MUST provide your entire response in English.";
+
+    const systemInstruction = `You are an expert software developer and debugger. Analyze the provided error message and stack trace from a web application and provide a concise, helpful explanation and a potential solution.${languageInstruction}
+
+**Your response MUST be:**
+1.  **Explanation:** A brief, clear explanation of what the error means in the context of a React/TypeScript web app.
+2.  **Possible Solution:** A concrete suggestion or code snippet to fix the issue.
+
+Structure your response clearly using markdown. Do not add any conversational fluff or greetings.`;
 
     const prompt = `Error Message:
 \`\`\`
-${log.message}
+${error.message}
 \`\`\`
 
 Stack Trace:
 \`\`\`
-${log.stack || 'No stack trace available.'}
+${error.stack || 'No stack trace available.'}
 \`\`\`
-`;
+
+Provide an explanation and a possible solution.`;
 
     try {
         const response = await ai.models.generateContent({
@@ -32,12 +36,12 @@ ${log.stack || 'No stack trace available.'}
             contents: prompt,
             config: {
                 systemInstruction,
-            },
+                thinkingConfig: { thinkingBudget: 0 }
+            }
         });
         return response.text.trim();
-    } catch (error) {
-        logDev('error', "AI Debugger failed:", error);
-        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-        return `Sorry, I was unable to analyze this error. The AI debugger failed with the following message: ${errorMessage}`;
+    } catch (apiError) {
+        console.error("AI help service failed:", apiError);
+        return "Sorry, I couldn't analyze this error. My own help service seems to be down.";
     }
 };
