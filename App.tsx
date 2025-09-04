@@ -21,7 +21,7 @@ import DevConsole from './components/DevConsole';
 import ConsoleToggleButton from './components/ConsoleToggleButton';
 import { useDebug } from './contexts/DebugContext';
 import ParticleUniverse from './components/ParticleUniverse';
-import Globe from './components/Globe';
+//import Globe from './components/Globe';
 import ImageModal from './components/ImageModal';
 import CodePreviewModal from './components/CodePreviewModal';
 
@@ -316,7 +316,7 @@ const App: React.FC = () => {
         <>
             <div className="relative flex flex-col h-[100dvh] bg-[#F9F6F2] dark:bg-transparent text-neutral-800 dark:text-white transition-colors duration-300">
                 <div className="absolute inset-0 z-0">
-                    {isDarkMode ? <ParticleUniverse /> : <Globe />}
+                    {isDarkMode ? <ParticleUniverse /> : <></>}
                 </div>
 
                 <Header
