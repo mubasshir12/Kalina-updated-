@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import * as THREE from "three";
 
-const OrbsBackground: React.FC = () => {
+const GoldenGalaxy: React.FC = () => {
   const mountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -13,39 +13,49 @@ const OrbsBackground: React.FC = () => {
       0.1,
       1000
     );
-    camera.position.z = 20;
+    camera.position.z = 30;
 
     const renderer = new THREE.WebGLRenderer({ alpha: true });
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     mount.appendChild(renderer.domElement);
 
-    // Create glowing orbs
-    const orbs: THREE.Mesh[] = [];
-    const geometry = new THREE.SphereGeometry(0.5, 32, 32);
-    const material = new THREE.MeshBasicMaterial({
-      color: 0x00ffff,
+    // Galaxy particles
+    const particlesCount = 6000;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particlesCount * 3);
+    const colors = new Float32Array(particlesCount * 3);
+
+    for (let i = 0; i < particlesCount; i++) {
+      const angle = i * 0.1;
+      const radius = Math.sqrt(i) * 0.6;
+      positions[i * 3] = radius * Math.cos(angle);
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 2;
+      positions[i * 3 + 2] = radius * Math.sin(angle);
+
+      // Golden gradient colors
+      colors[i * 3] = 1.0; // R
+      colors[i * 3 + 1] = 0.84; // G (soft golden tone)
+      colors[i * 3 + 2] = 0.0; // B
+    }
+
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+
+    const material = new THREE.PointsMaterial({
+      size: 0.06,
+      vertexColors: true,
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.9,
     });
 
-    for (let i = 0; i < 20; i++) {
-      const orb = new THREE.Mesh(geometry, material.clone());
-      orb.position.set(
-        (Math.random() - 0.5) * 20,
-        (Math.random() - 0.5) * 20,
-        (Math.random() - 0.5) * 20
-      );
-      scene.add(orb);
-      orbs.push(orb);
-    }
+    const points = new THREE.Points(geometry, material);
+    scene.add(points);
 
     function animate() {
       requestAnimationFrame(animate);
-      orbs.forEach((orb, i) => {
-        orb.position.x += Math.sin(Date.now() * 0.001 + i) * 0.001;
-        orb.position.y += Math.cos(Date.now() * 0.001 + i) * 0.001;
-      });
+      points.rotation.y += 0.0008;
+      points.rotation.x += 0.0003;
       renderer.render(scene, camera);
     }
     animate();
@@ -58,4 +68,4 @@ const OrbsBackground: React.FC = () => {
   return <div ref={mountRef} style={{ width: "100%", height: "100%" }} />;
 };
 
-export default OrbsBackground;
+export default GoldenGalaxy;
