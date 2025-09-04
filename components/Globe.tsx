@@ -1,55 +1,56 @@
 import React, { useEffect, useRef } from "react";
+import * as THREE from "three";
 
-const GoldenAurora: React.FC = () => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+const GoldenPortal: React.FC = () => {
+  const mountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current!;
-    const ctx = canvas.getContext("2d")!;
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const mount = mountRef.current!;
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      mount.clientWidth / mount.clientHeight,
+      0.1,
+      1000
+    );
+    camera.position.z = 20;
+
+    const renderer = new THREE.WebGLRenderer({ alpha: true });
+    renderer.setSize(mount.clientWidth, mount.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    mount.appendChild(renderer.domElement);
+
+    const rings: THREE.Mesh[] = [];
+    const material = new THREE.MeshBasicMaterial({
+      color: 0xffd700, // golden
+      wireframe: true,
+      transparent: true,
+      opacity: 0.8,
+    });
+
+    for (let i = 0; i < 8; i++) {
+      const geometry = new THREE.TorusGeometry(4 + i * 0.8, 0.05, 16, 100);
+      const ring = new THREE.Mesh(geometry, material.clone());
+      scene.add(ring);
+      rings.push(ring);
+    }
 
     function animate() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-      gradient.addColorStop(0, "rgba(255,215,0,0.15)"); // gold
-      gradient.addColorStop(1, "rgba(255,165,0,0.05)"); // orange-golden
-
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      ctx.beginPath();
-      ctx.strokeStyle = "rgba(255,215,0,0.6)";
-      ctx.lineWidth = 2;
-      const time = Date.now() * 0.002;
-
-      for (let x = 0; x < canvas.width; x += 20) {
-        const y = canvas.height / 2 + Math.sin(x * 0.01 + time) * 50;
-        ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-
       requestAnimationFrame(animate);
+      rings.forEach((ring, i) => {
+        ring.rotation.x += 0.001 * (i + 1);
+        ring.rotation.y += 0.0015 * (i + 1);
+      });
+      renderer.render(scene, camera);
     }
     animate();
 
-    return () => {};
+    return () => {
+      mount.removeChild(renderer.domElement);
+    };
   }, []);
 
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        zIndex: 0,
-      }}
-    />
-  );
+  return <div ref={mountRef} style={{ width: "100%", height: "100%" }} />;
 };
 
-export default GoldenAurora;
+export default GoldenPortal;
