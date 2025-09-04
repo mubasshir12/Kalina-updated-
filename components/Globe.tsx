@@ -65,6 +65,7 @@ const CustomGlobe: React.FC = () => {
             });
             const globe = new THREE.Mesh(globeGeometry, globeMaterial);
             scene.add(globe);
+            const forcedGlobeColor = new THREE.Color(0xe0e0ff);
             
             // Wireframe Overlay
             const wireframeMaterial = new THREE.MeshBasicMaterial({
@@ -121,6 +122,8 @@ const CustomGlobe: React.FC = () => {
 
             function animate() {
                 animationFrameId = requestAnimationFrame(animate);
+                // 🔒 Force globe color override every frame
+                globeMaterial.color.copy(forcedGlobeColor);
                 
                 const elapsedTime = clock.getElapsedTime();
                 
