@@ -1,94 +1,58 @@
-import React, { useEffect, useRef } from 'react';
-import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import React, { useEffect, useRef } from "react";
+import * as THREE from "three";
 
-const wireGlobeCss = `
-.wire-globe-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 0;
-}
-.wire-globe-canvas {
-    display: block;
-    width: 100%;
-    height: 100%;
-}
-`;
-
-const CustomWireGlobe: React.FC = () => {
+const ParticleBackground: React.FC = () => {
   const mountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const currentMount = mountRef.current;
-    if (!currentMount) return;
+    const mount = mountRef.current;
+    if (!mount) return;
 
-    let scene = new THREE.Scene();
-    let camera = new THREE.PerspectiveCamera(
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(
       75,
-      currentMount.clientWidth / currentMount.clientHeight,
+      mount.clientWidth / mount.clientHeight,
       0.1,
       1000
     );
-    camera.position.z = 20;
+    camera.position.z = 5;
 
-    let renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(currentMount.clientWidth, currentMount.clientHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.domElement.className = "wire-globe-canvas";
-    currentMount.appendChild(renderer.domElement);
+    const renderer = new THREE.WebGLRenderer({ alpha: true });
+    renderer.setSize(mount.clientWidth, mount.clientHeight);
+    mount.appendChild(renderer.domElement);
 
-    // Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    scene.add(ambientLight);
+    // Particles
+    const particlesCount = 2000;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particlesCount * 3);
 
-    // Neon Wireframe Globe
-    const globeGeometry = new THREE.SphereGeometry(8, 64, 64);
-    const wireframeMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00ffff, // neon cyan
-      wireframe: true
+    for (let i = 0; i < particlesCount * 3; i++) {
+      positions[i] = (Math.random() - 0.5) * 10;
+    }
+
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    const material = new THREE.PointsMaterial({
+      size: 0.02,
+      color: 0x00ccff,
     });
-    const globe = new THREE.Mesh(globeGeometry, wireframeMaterial);
-    scene.add(globe);
-
-    // Orbit Controls
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enablePan = false;
-    controls.enableZoom = false;
-    controls.autoRotate = true;
-    controls.autoRotateSpeed = 1.0;
+    const points = new THREE.Points(geometry, material);
+    scene.add(points);
 
     // Animate
     function animate() {
       requestAnimationFrame(animate);
-      globe.rotation.y += 0.002; // slow rotation
-      controls.update();
+      points.rotation.y += 0.0008;
       renderer.render(scene, camera);
     }
     animate();
 
-    // Handle resize
-    function onResize() {
-      camera.aspect = currentMount.clientWidth / currentMount.clientHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(currentMount.clientWidth, currentMount.clientHeight);
-    }
-    window.addEventListener("resize", onResize);
-
+    // Cleanup
     return () => {
-      window.removeEventListener("resize", onResize);
-      currentMount.removeChild(renderer.domElement);
+      mount.removeChild(renderer.domElement);
     };
   }, []);
 
-  return (
-    <>
-      <style>{wireGlobeCss}</style>
-      <div ref={mountRef} className="wire-globe-container" />
-    </>
-  );
+  return <div ref={mountRef} style={{ width: "100%", height: "100%" }} />;
 };
 
-export default CustomWireGlobe;
+export default ParticleBackground;
