@@ -150,7 +150,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
                            {showWelcomeScreen ? (
                                 <WelcomeScreen onSelectSuggestion={handleSelectSuggestion} />
                             ) : (
-                                <div className="p-4 md:p-6">
+                                <div className="p-2 md:p-4">
                                     <div className="max-w-4xl mx-auto">
                                         {activeConversation && (
                                             <ChatHistory
