@@ -1,181 +1,177 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 const globeCss = `
 .globe-container {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 0;
-    overflow: hidden;
-}
-.globe-canvas {
-    display: block;
-    width: 100%;
-    height: 100%;
-}
-`;
+        top: 0;
+            left: 0;
+                width: 100%;
+                    height: 100%;
+                        z-index: 0;
+                            overflow: hidden;
+                            }
+                            .globe-canvas {
+                                display: block;
+                                    width: 100%;
+                                        height: 100%;
+                                        }
+                                        `;
 
-const CustomGlobe: React.FC = () => {
-  const mountRef = useRef<HTMLDivElement>(null);
+                                        const CustomGlobe: React.FC = () => {
+                                          const mountRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const currentMount = mountRef.current;
-    if (!currentMount) return;
+                                            useEffect(() => {
+                                                const currentMount = mountRef.current;
+                                                    if (!currentMount) return;
 
-    let animationFrameId: number;
+                                                        let animationFrameId: number;
 
-    // --- Scene setup ---
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(
-      75,
-      currentMount.clientWidth / currentMount.clientHeight,
-      0.1,
-      1000
-    );
-    camera.position.z = 15;
+                                                            // --- Scene setup ---
+                                                                const scene = new THREE.Scene();
+                                                                    const camera = new THREE.PerspectiveCamera(
+                                                                          75,
+                                                                                currentMount.clientWidth / currentMount.clientHeight,
+                                                                                      0.1,
+                                                                                            1000
+                                                                                                );
+                                                                                                    camera.position.z = 15;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(currentMount.clientWidth, currentMount.clientHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.domElement.className = 'globe-canvas';
-    currentMount.appendChild(renderer.domElement);
+                                                                                                        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                                                                                                            renderer.setSize(currentMount.clientWidth, currentMount.clientHeight);
+                                                                                                                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                                                                                                                    renderer.domElement.className = 'globe-canvas';
+                                                                                                                        currentMount.appendChild(renderer.domElement);
 
-    // --- Lighting ---
-    scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-    scene.add(new THREE.HemisphereLight(0xffffff, 0xcccccc, 1));
+                                                                                                                            // --- Lighting ---
+                                                                                                                                scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+                                                                                                                                    scene.add(new THREE.HemisphereLight(0xffffff, 0xcccccc, 1));
 
-    // --- Controls ---
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.enablePan = false;
-    controls.enableZoom = false;
-    controls.autoRotate = true;
-    controls.autoRotateSpeed = 0.5;
-    controls.minDistance = 12;
-    controls.maxDistance = 20;
+                                                                                                                                        // --- Controls ---
+                                                                                                                                            const controls = new OrbitControls(camera, renderer.domElement);
+                                                                                                                                                controls.enableDamping = true;
+                                                                                                                                                    controls.enablePan = false;
+                                                                                                                                                        controls.enableZoom = false;
+                                                                                                                                                            controls.autoRotate = true;
+                                                                                                                                                                controls.autoRotateSpeed = 0.5;
+                                                                                                                                                                    controls.minDistance = 12;
+                                                                                                                                                                        controls.maxDistance = 20;
 
-    const clock = new THREE.Clock();
+                                                                                                                                                                            const clock = new THREE.Clock();
 
-    // --- Globe geometry ---
-    const globeGeometry = new THREE.IcosahedronGeometry(10, 3);
-    const globeMaterial = new THREE.MeshStandardMaterial({
-      color: 0xe0e0ff,
-      flatShading: true,
-    });
-    const globe = new THREE.Mesh(globeGeometry, globeMaterial);
-    scene.add(globe);
+                                                                                                                                                                                // --- Globe geometry ---
+                                                                                                                                                                                    const globeGeometry = new THREE.IcosahedronGeometry(10, 3);
+                                                                                                                                                                                        const globeMaterial = new THREE.MeshStandardMaterial({
+                                                                                                                                                                                              color: 0x1e293b, // <- Dark bluish gray (CHANGE THIS when you want)
+                                                                                                                                                                                                    flatShading: true,
+                                                                                                                                                                                                        });
+                                                                                                                                                                                                            const globe = new THREE.Mesh(globeGeometry, globeMaterial);
+                                                                                                                                                                                                                scene.add(globe);
 
-    // --- Wireframe overlay ---
-    const wireframeMaterial = new THREE.MeshBasicMaterial({
-      color: 0xd97706, // amber-600
-      wireframe: true,
-      transparent: true,
-      opacity: 0.2,
-    });
-    const wireframe = new THREE.Mesh(globeGeometry, wireframeMaterial);
-    wireframe.scale.set(1.002, 1.002, 1.002); // avoid z-fighting
-    scene.add(wireframe);
+                                                                                                                                                                                                                    // --- Wireframe overlay (Shining Golden) ---
+                                                                                                                                                                                                                        const wireframeMaterial = new THREE.MeshBasicMaterial({
+                                                                                                                                                                                                                              color: 0xffd700, // Golden
+                                                                                                                                                                                                                                    wireframe: true,
+                                                                                                                                                                                                                                          transparent: true,
+                                                                                                                                                                                                                                                opacity: 0.6, // a bit see-through for shine effect
+                                                                                                                                                                                                                                                    });
+                                                                                                                                                                                                                                                        const wireframe = new THREE.Mesh(globeGeometry, wireframeMaterial);
+                                                                                                                                                                                                                                                            wireframe.scale.set(1.002, 1.002, 1.002);
+                                                                                                                                                                                                                                                                scene.add(wireframe);
 
-    // --- Satellites ---
-    const satellites: THREE.Object3D[] = [];
-    for (let i = 0; i < 3; i++) {
-      const satGeometry = new THREE.SphereGeometry(0.2, 8, 8);
-      const satMaterial = new THREE.MeshBasicMaterial({ color: 0x818cf8 });
-      const satellite = new THREE.Mesh(satGeometry, satMaterial);
+                                                                                                                                                                                                                                                                    // --- Satellites ---
+                                                                                                                                                                                                                                                                        const satellites: THREE.Object3D[] = [];
+                                                                                                                                                                                                                                                                            for (let i = 0; i < 3; i++) {
+                                                                                                                                                                                                                                                                                  const satGeometry = new THREE.SphereGeometry(0.2, 8, 8);
+                                                                                                                                                                                                                                                                                        const satMaterial = new THREE.MeshBasicMaterial({ color: 0x818cf8 });
+                                                                                                                                                                                                                                                                                              const satellite = new THREE.Mesh(satGeometry, satMaterial);
 
-      const pivot = new THREE.Object3D();
-      pivot.add(satellite);
-      scene.add(pivot);
+                                                                                                                                                                                                                                                                                                    const pivot = new THREE.Object3D();
+                                                                                                                                                                                                                                                                                                          pivot.add(satellite);
+                                                                                                                                                                                                                                                                                                                scene.add(pivot);
 
-      const distance = 11 + i * 0.7;
-      satellite.position.set(distance, 0, 0);
+                                                                                                                                                                                                                                                                                                                      const distance = 11 + i * 0.7;
+                                                                                                                                                                                                                                                                                                                            satellite.position.set(distance, 0, 0);
 
-      // random orbit plane
-      pivot.rotation.x = Math.random() * Math.PI;
-      pivot.rotation.y = Math.random() * Math.PI;
+                                                                                                                                                                                                                                                                                                                                  pivot.rotation.x = Math.random() * Math.PI;
+                                                                                                                                                                                                                                                                                                                                        pivot.rotation.y = Math.random() * Math.PI;
 
-      satellites.push(pivot);
-    }
+                                                                                                                                                                                                                                                                                                                                              satellites.push(pivot);
+                                                                                                                                                                                                                                                                                                                                                  }
 
-    // --- Background stars ---
-    const starVertices: number[] = [];
-    for (let i = 0; i < 1500; i++) {
-      const x = (Math.random() - 0.5) * 2000;
-      const y = (Math.random() - 0.5) * 2000;
-      const z = (Math.random() - 0.5) * 2000;
-      if (Math.sqrt(x * x + y * y + z * z) > 100) {
-        starVertices.push(x, y, z);
-      }
-    }
-    const starGeometry = new THREE.BufferGeometry();
-    starGeometry.setAttribute(
-      'position',
-      new THREE.Float32BufferAttribute(starVertices, 3)
-    );
-    const starMaterial = new THREE.PointsMaterial({
-      color: 0xaaaaaa,
-      size: 0.3,
-      sizeAttenuation: true,
-    });
-    const stars = new THREE.Points(starGeometry, starMaterial);
-    scene.add(stars);
+                                                                                                                                                                                                                                                                                                                                                      // --- Background stars ---
+                                                                                                                                                                                                                                                                                                                                                          const starVertices: number[] = [];
+                                                                                                                                                                                                                                                                                                                                                              for (let i = 0; i < 1500; i++) {
+                                                                                                                                                                                                                                                                                                                                                                    const x = (Math.random() - 0.5) * 2000;
+                                                                                                                                                                                                                                                                                                                                                                          const y = (Math.random() - 0.5) * 2000;
+                                                                                                                                                                                                                                                                                                                                                                                const z = (Math.random() - 0.5) * 2000;
+                                                                                                                                                                                                                                                                                                                                                                                      if (Math.sqrt(x * x + y * y + z * z) > 100) {
+                                                                                                                                                                                                                                                                                                                                                                                              starVertices.push(x, y, z);
+                                                                                                                                                                                                                                                                                                                                                                                                    }
+                                                                                                                                                                                                                                                                                                                                                                                                        }
+                                                                                                                                                                                                                                                                                                                                                                                                            const starGeometry = new THREE.BufferGeometry();
+                                                                                                                                                                                                                                                                                                                                                                                                                starGeometry.setAttribute(
+                                                                                                                                                                                                                                                                                                                                                                                                                      'position',
+                                                                                                                                                                                                                                                                                                                                                                                                                            new THREE.Float32BufferAttribute(starVertices, 3)
+                                                                                                                                                                                                                                                                                                                                                                                                                                );
+                                                                                                                                                                                                                                                                                                                                                                                                                                    const starMaterial = new THREE.PointsMaterial({
+                                                                                                                                                                                                                                                                                                                                                                                                                                          color: 0x888888,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                size: 0.25,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                      sizeAttenuation: true,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                          });
+                                                                                                                                                                                                                                                                                                                                                                                                                                                              const stars = new THREE.Points(starGeometry, starMaterial);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                  scene.add(stars);
 
-    // --- Animate ---
-    function animate() {
-      animationFrameId = requestAnimationFrame(animate);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                      // --- Animate ---
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                          function animate() {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                animationFrameId = requestAnimationFrame(animate);
 
-      const elapsedTime = clock.getElapsedTime();
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      satellites.forEach((sat, i) => {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              sat.rotation.y += 0.003 * (i + 1);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    });
 
-      satellites.forEach((sat, i) => {
-        sat.rotation.y += 0.003 * (i + 1);
-      });
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          controls.update();
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                renderer.render(scene, camera);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        animate();
 
-      controls.update();
-      renderer.render(scene, camera);
-    }
-    animate();
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            // --- Resize handling ---
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                function onWindowResize() {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      camera.aspect = currentMount.clientWidth / currentMount.clientHeight;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            camera.updateProjectionMatrix();
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  renderer.setSize(currentMount.clientWidth, currentMount.clientHeight);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          window.addEventListener('resize', onWindowResize);
 
-    // --- Resize handling ---
-    function onWindowResize() {
-      camera.aspect = currentMount.clientWidth / currentMount.clientHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(currentMount.clientWidth, currentMount.clientHeight);
-    }
-    window.addEventListener('resize', onWindowResize);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              // --- Cleanup ---
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  return () => {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        cancelAnimationFrame(animationFrameId);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              window.removeEventListener('resize', onWindowResize);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    controls.dispose();
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          scene.traverse((object) => {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  if (object instanceof THREE.Mesh || object instanceof THREE.Points) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            object.geometry.dispose();
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      if (Array.isArray(object.material)) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  object.material.forEach((mat) => mat.dispose());
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            } else {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        object.material.dispose();
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                });
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      renderer.dispose();
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            if (renderer.domElement && currentMount.contains(renderer.domElement)) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    currentMount.removeChild(renderer.domElement);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              };
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                }, []);
 
-    // --- Cleanup ---
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-      window.removeEventListener('resize', onWindowResize);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  return (
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      <>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <style>{globeCss}</style>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <div ref={mountRef} className="globe-container" />
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      </>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        );
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        };
 
-      controls.dispose();
-      scene.traverse((object) => {
-        if (object instanceof THREE.Mesh || object instanceof THREE.Points) {
-          object.geometry.dispose();
-          if (Array.isArray(object.material)) {
-            object.material.forEach((mat) => mat.dispose());
-          } else {
-            object.material.dispose();
-          }
-        }
-      });
-      renderer.dispose();
-      if (renderer.domElement && currentMount.contains(renderer.domElement)) {
-        currentMount.removeChild(renderer.domElement);
-      }
-    };
-  }, []);
-
-  return (
-    <>
-      <style>{globeCss}</style>
-      <div ref={mountRef} className="globe-container" />
-    </>
-  );
-};
-
-export default CustomGlobe;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        export default CustomGlobe;
