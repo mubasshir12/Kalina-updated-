@@ -17,7 +17,7 @@ const globeCss = `
                                     width: 100%;
                                         height: 100%;
                                         }
-                                        `;
+                                       `;
 
                                         const CustomGlobe: React.FC = () => {
                                           const mountRef = useRef<HTMLDivElement>(null);
@@ -63,7 +63,7 @@ const globeCss = `
                                                                                                                                                                                 // --- Globe geometry ---
                                                                                                                                                                                     const globeGeometry = new THREE.IcosahedronGeometry(10, 3);
                                                                                                                                                                                         const globeMaterial = new THREE.MeshStandardMaterial({
-                                                                                                                                                                                              color: 0x1e293b, // <- Dark bluish gray (CHANGE THIS when you want)
+                                                                                                                                                                                              color: 0xf9f6f1, // <- Dark bluish gray (CHANGE THIS when you want)
                                                                                                                                                                                                     flatShading: true,
                                                                                                                                                                                                         });
                                                                                                                                                                                                             const globe = new THREE.Mesh(globeGeometry, globeMaterial);
