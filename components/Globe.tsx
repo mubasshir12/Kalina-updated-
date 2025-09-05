@@ -1,178 +1,79 @@
-import React, { useEffect, useRef } from 'react';
-import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import React, { useRef, useEffect } from "react";
 
-const globeCss = `
-.globe-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 0;
-}
-.globe-canvas {
-    display: block;
-    width: 100%;
-    height: 100%;
-}
-`;
+const NeuralBackground: React.FC = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-const CustomGlobe: React.FC = () => {
-    const mountRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const canvas = canvasRef.current!;
+    const ctx = canvas.getContext("2d")!;
+    let width = (canvas.width = window.innerWidth);
+    let height = (canvas.height = window.innerHeight);
 
-    useEffect(() => {
-        const currentMount = mountRef.current;
-        if (!currentMount) return;
+    const nodes: { x: number; y: number; r: number; vx: number; vy: number }[] = [];
+    for (let i = 0; i < 40; i++) {
+      nodes.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        r: 4,
+        vx: (Math.random() - 0.5) * 0.7,
+        vy: (Math.random() - 0.5) * 0.7,
+      });
+    }
 
-        let scene: THREE.Scene, camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer, controls: OrbitControls;
-        let animationFrameId: number;
-        const satellites: THREE.Mesh[] = [];
+    function animate() {
+      ctx.fillStyle = "#f9f6f1"; // background
+      ctx.fillRect(0, 0, width, height);
 
-        function init() {
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, currentMount.clientWidth / currentMount.clientHeight, 0.1, 1000);
-            camera.position.z = 15;
+      nodes.forEach((n, i) => {
+        n.x += n.vx;
+        n.y += n.vy;
+        if (n.x < 0 || n.x > width) n.vx *= -1;
+        if (n.y < 0 || n.y > height) n.vy *= -1;
 
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setSize(currentMount.clientWidth, currentMount.clientHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.domElement.className = 'globe-canvas';
-            currentMount.appendChild(renderer.domElement);
-            
-            // Soft, even lighting to prevent dark spots
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-            scene.add(ambientLight);
-            const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xcccccc, 1);
-            scene.add(hemisphereLight);
+        // draw node
+        ctx.beginPath();
+        ctx.fillStyle = "#FFD700";
+        ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+        ctx.fill();
 
-            controls = new OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.enablePan = false;
-            controls.enableZoom = false;
-            controls.autoRotate = true;
-            controls.autoRotateSpeed = 0.5;
-            controls.minDistance = 12;
-            controls.maxDistance = 20;
-
-            const clock = new THREE.Clock();
-
-            // Stylized Globe
-            const globeGeometry = new THREE.IcosahedronGeometry(10, 3);
-            const globeMaterial = new THREE.MeshStandardMaterial({
-                color: 0xe0e0ff,
-                flatShading: true,
-            });
-            const globe = new THREE.Mesh(globeGeometry, globeMaterial);
-            scene.add(globe);
-            
-            // Wireframe Overlay
-            const wireframeMaterial = new THREE.MeshBasicMaterial({
-                color: 0xd97706, // Amber-600 to match theme
-                wireframe: true,
-                transparent: true,
-                opacity: 0.15,
-            });
-            const wireframe = new THREE.Mesh(globeGeometry, wireframeMaterial);
-            wireframe.scale.set(1.001, 1.001, 1.001); // Slightly larger to avoid z-fighting
-            scene.add(wireframe);
-
-            // Orbiting Satellites
-            for (let i = 0; i < 3; i++) {
-                const satGeometry = new THREE.SphereGeometry(0.15, 8, 8);
-                const satMaterial = new THREE.MeshBasicMaterial({ color: 0x818cf8 }); // Lighter Indigo
-                const satellite = new THREE.Mesh(satGeometry, satMaterial);
-                
-                const pivot = new THREE.Object3D();
-                pivot.add(satellite);
-                scene.add(pivot);
-
-                const distance = 11 + i * 0.5;
-                satellite.position.set(distance, 0, 0);
-
-                // Randomize orbit plane
-                pivot.rotation.x = Math.random() * Math.PI;
-                pivot.rotation.y = Math.random() * Math.PI;
-                
-                satellites.push(pivot as unknown as THREE.Mesh);
-            }
-            
-            // Background Stars
-            const starVertices = [];
-            for (let i = 0; i < 2000; i++) {
-                const x = (Math.random() - 0.5) * 2000;
-                const y = (Math.random() - 0.5) * 2000;
-                const z = (Math.random() - 0.5) * 2000;
-                const dist = Math.sqrt(x*x + y*y + z*z);
-                if (dist > 100) { // Only add stars far enough away
-                    starVertices.push(x, y, z);
-                }
-            }
-            const starGeometry = new THREE.BufferGeometry();
-            starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
-            const starMaterial = new THREE.PointsMaterial({ color: 0xaaaaaa, size: 0.3 });
-            const stars = new THREE.Points(starGeometry, starMaterial);
-            scene.add(stars);
-
-
-            window.addEventListener('resize', onWindowResize);
-
-            animate();
-
-            function animate() {
-                animationFrameId = requestAnimationFrame(animate);
-                
-                const elapsedTime = clock.getElapsedTime();
-                
-                // Animate satellites
-                satellites.forEach((sat, i) => {
-                    sat.rotation.y += 0.005 * (i + 1);
-                });
-                
-                controls.update();
-                renderer.render(scene, camera);
-            }
+        // connect to nearby
+        for (let j = i + 1; j < nodes.length; j++) {
+          const m = nodes[j];
+          const dx = n.x - m.x;
+          const dy = n.y - m.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 150) {
+            ctx.strokeStyle = "rgba(255,215,0,0.2)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(n.x, n.y);
+            ctx.lineTo(m.x, m.y);
+            ctx.stroke();
+          }
         }
+      });
 
-        function onWindowResize() {
-            if (!renderer || !camera) return;
-            camera.aspect = currentMount.clientWidth / currentMount.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(currentMount.clientWidth, currentMount.clientHeight);
-        }
+      requestAnimationFrame(animate);
+    }
+    animate();
 
-        init();
+    const resize = () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    };
+    window.addEventListener("resize", resize);
 
-        return () => {
-            cancelAnimationFrame(animationFrameId);
-            window.removeEventListener('resize', onWindowResize);
-            // FIX: The type definitions for OrbitControls might be missing the dispose method. Casting to 'any' to call it.
-            (controls as any)?.dispose();
-            scene.traverse(object => {
-                if (object instanceof THREE.Mesh || object instanceof THREE.Points) {
-                    object.geometry.dispose();
-                    const material = object.material as THREE.Material | THREE.Material[];
-                    if(Array.isArray(material)) {
-                        material.forEach(mat => mat.dispose());
-                    } else {
-                        material.dispose();
-                    }
-                }
-            });
-            renderer?.dispose();
-            if (currentMount && renderer?.domElement) {
-                currentMount.removeChild(renderer.domElement);
-            }
-        };
+    return () => {
+      window.removeEventListener("resize", resize);
+    };
+  }, []);
 
-    }, []);
-
-    return (
-        <>
-            <style>{globeCss}</style>
-            <div ref={mountRef} className="globe-container" />
-        </>
-    );
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ position: "absolute", inset: 0, zIndex: 0 }}
+    />
+  );
 };
 
-export default CustomGlobe;
+export default NeuralBackground;
