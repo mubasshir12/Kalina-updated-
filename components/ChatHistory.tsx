@@ -51,7 +51,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ messages, isLoading, isThinki
   }, [scrollContainerRef]);
 
   return (
-    <div className="space-y-6 pb-2">
+    <div className="space-y-4 pb-1">
       {messages.map((msg, index) => {
         const isLastMessage = index === messages.length - 1;
         const canRetry = isLastMessage && msg.role === 'model' && !isLoading && !isThinking && !msg.isGeneratingImage && !msg.isPlanning;
