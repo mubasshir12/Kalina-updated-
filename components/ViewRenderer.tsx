@@ -175,11 +175,11 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
                             )}
                         </div>
                         {showNavigators && (
-                            <ConversationNavigator
-                                userMessageIndices={userMessageIndices}
-                                activeMessageIndex={activeMessageIndex}
-                                onDotClick={handleNavigateToMessage}
-                            />
+               
+                           <></>
+                            
+                           
+                           
                         )}
                     </div>
                 </main>
