@@ -1,129 +1,181 @@
-import React, { useCallback } from "react";
-import Particles from "react-tsparticles";
-import type { Container, Engine } from "tsparticles-engine";
-import { loadFull } from "tsparticles";
+import React, { useEffect, useRef } from 'react';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
-const OFF_WHITE_AMBER = "#fff7ed"; // background color — change if needed
+const globeCss = `
+.globe-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    overflow: hidden;
+}
+.globe-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+`;
 
-const options = {
-  fullScreen: false, // we'll place the component in our own container
-  detectRetina: true,
-  fpsLimit: 60,
-  particles: {
-    number: {
-      value: 100,
-      density: {
-        enable: true,
-        area: 800
-      }
-    },
-    color: {
-      value: "#80D8FF" // same as your snippet
-    },
-    shape: {
-      type: "circle"
-    },
-    opacity: {
-      value: 0.95,
-      random: false,
-      anim: {
-        enable: true,
-        speed: 0.6,
-        opacity_min: 0.2,
-        sync: false
-      }
-    },
-    size: {
-      value: { min: 2, max: 5 },
-      random: true
-    },
-    links: {
-      enable: true,
-      distance: 180,
-      opacity: 0.25,
-      width: 1,
-      color: "#80D8FF"
-    },
-    move: {
-      enable: true,
-      speed: 0.9,
-      direction: "none",
-      random: false,
-      straight: false,
-      outModes: {
-        default: "out"
-      },
-      attract: {
-        enable: false
+const CustomGlobe: React.FC = () => {
+  const mountRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const currentMount = mountRef.current;
+    if (!currentMount) return;
+
+    let animationFrameId: number;
+
+    // --- Scene setup ---
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      currentMount.clientWidth / currentMount.clientHeight,
+      0.1,
+      1000
+    );
+    camera.position.z = 15;
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(currentMount.clientWidth, currentMount.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.domElement.className = 'globe-canvas';
+    currentMount.appendChild(renderer.domElement);
+
+    // --- Lighting ---
+    scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+    scene.add(new THREE.HemisphereLight(0xffffff, 0xcccccc, 1));
+
+    // --- Controls ---
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.enablePan = false;
+    controls.enableZoom = false;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.5;
+    controls.minDistance = 12;
+    controls.maxDistance = 20;
+
+    const clock = new THREE.Clock();
+
+    // --- Globe geometry ---
+    const globeGeometry = new THREE.IcosahedronGeometry(10, 3);
+    const globeMaterial = new THREE.MeshStandardMaterial({
+      color: 0xe0e0ff,
+      flatShading: true,
+    });
+    const globe = new THREE.Mesh(globeGeometry, globeMaterial);
+    scene.add(globe);
+
+    // --- Wireframe overlay ---
+    const wireframeMaterial = new THREE.MeshBasicMaterial({
+      color: 0xd97706, // amber-600
+      wireframe: true,
+      transparent: true,
+      opacity: 0.2,
+    });
+    const wireframe = new THREE.Mesh(globeGeometry, wireframeMaterial);
+    wireframe.scale.set(1.002, 1.002, 1.002); // avoid z-fighting
+    scene.add(wireframe);
+
+    // --- Satellites ---
+    const satellites: THREE.Object3D[] = [];
+    for (let i = 0; i < 3; i++) {
+      const satGeometry = new THREE.SphereGeometry(0.2, 8, 8);
+      const satMaterial = new THREE.MeshBasicMaterial({ color: 0x818cf8 });
+      const satellite = new THREE.Mesh(satGeometry, satMaterial);
+
+      const pivot = new THREE.Object3D();
+      pivot.add(satellite);
+      scene.add(pivot);
+
+      const distance = 11 + i * 0.7;
+      satellite.position.set(distance, 0, 0);
+
+      // random orbit plane
+      pivot.rotation.x = Math.random() * Math.PI;
+      pivot.rotation.y = Math.random() * Math.PI;
+
+      satellites.push(pivot);
+    }
+
+    // --- Background stars ---
+    const starVertices: number[] = [];
+    for (let i = 0; i < 1500; i++) {
+      const x = (Math.random() - 0.5) * 2000;
+      const y = (Math.random() - 0.5) * 2000;
+      const z = (Math.random() - 0.5) * 2000;
+      if (Math.sqrt(x * x + y * y + z * z) > 100) {
+        starVertices.push(x, y, z);
       }
     }
-  },
-  interactivity: {
-    detectsOn: "canvas",
-    events: {
-      onHover: {
-        enable: true,
-        mode: "repulse"
-      },
-      onClick: {
-        enable: true,
-        mode: "push"
-      },
-      resize: true
-    },
-    modes: {
-      grab: { distance: 400, links: { opacity: 0.6 } },
-      bubble: { distance: 400, size: 8, duration: 2, opacity: 0.8 },
-      repulse: { distance: 120 },
-      push: { quantity: 4 },
-      remove: { quantity: 2 }
+    const starGeometry = new THREE.BufferGeometry();
+    starGeometry.setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute(starVertices, 3)
+    );
+    const starMaterial = new THREE.PointsMaterial({
+      color: 0xaaaaaa,
+      size: 0.3,
+      sizeAttenuation: true,
+    });
+    const stars = new THREE.Points(starGeometry, starMaterial);
+    scene.add(stars);
+
+    // --- Animate ---
+    function animate() {
+      animationFrameId = requestAnimationFrame(animate);
+
+      const elapsedTime = clock.getElapsedTime();
+
+      satellites.forEach((sat, i) => {
+        sat.rotation.y += 0.003 * (i + 1);
+      });
+
+      controls.update();
+      renderer.render(scene, camera);
     }
-  },
-  background: {
-    color: OFF_WHITE_AMBER
-  }
-};
+    animate();
 
-const ParticlesBackground: React.FC = () => {
-  // load tsparticles engine
-  const particlesInit = useCallback(async (engine: Engine) => {
-    // this loads the tsparticles bundle with all features
-    await loadFull(engine);
+    // --- Resize handling ---
+    function onWindowResize() {
+      camera.aspect = currentMount.clientWidth / currentMount.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(currentMount.clientWidth, currentMount.clientHeight);
+    }
+    window.addEventListener('resize', onWindowResize);
+
+    // --- Cleanup ---
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('resize', onWindowResize);
+
+      controls.dispose();
+      scene.traverse((object) => {
+        if (object instanceof THREE.Mesh || object instanceof THREE.Points) {
+          object.geometry.dispose();
+          if (Array.isArray(object.material)) {
+            object.material.forEach((mat) => mat.dispose());
+          } else {
+            object.material.dispose();
+          }
+        }
+      });
+      renderer.dispose();
+      if (renderer.domElement && currentMount.contains(renderer.domElement)) {
+        currentMount.removeChild(renderer.domElement);
+      }
+    };
   }, []);
 
-  const particlesLoaded = useCallback(async (container: Container | undefined) => {
-    // optional: you can keep a ref to container for debugging
-    // console.log("Particles container loaded:", container);
-  }, []);
-
-  // The outer wrapper ensures the chat UI can be placed above
-  // Put this component as a sibling behind your chat UI and ensure chat UI has higher z-index.
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        zIndex: 0,
-        background: OFF_WHITE_AMBER, // ensures background color always visible behind canvas
-        pointerEvents: "none" // let clicks pass through to UI by default (particles still respond via particle canvas)
-      }}
-    >
-      <Particles
-        id="tsparticles"
-        init={particlesInit}
-        loaded={particlesLoaded}
-        options={options}
-        style={{
-          position: "absolute",
-          inset: 0,
-          zIndex: 0,
-          // keep canvas visually subtle so text on top remains readable
-          opacity: 1,
-          pointerEvents: "auto" // set to "auto" if you want hover/click interactivity; else "none"
-        }}
-      />
-    </div>
+    <>
+      <style>{globeCss}</style>
+      <div ref={mountRef} className="globe-container" />
+    </>
   );
 };
 
-export default ParticlesBackground;
+export default CustomGlobe;
