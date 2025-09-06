@@ -1,7 +1,7 @@
 
 import React, { useState, KeyboardEvent, useRef, ChangeEvent, useEffect } from 'react';
 import { Suggestion, Tool, ChatModel, ModelInfo } from '../types';
-import { Sparkles, ChevronDown, X, Paperclip, ArrowUp, Globe, BrainCircuit, Image, Expand, File, Presentation, FileText, Camera, Languages, Link, ClipboardPaste, ChevronUp, CloudSun, Map } from 'lucide-react';
+import { Sparkles, ChevronDown, X, Paperclip, ArrowUp, Globe, BrainCircuit, Image, Expand, File, Presentation, FileText, Camera, Languages, Link, ClipboardPaste, ChevronUp } from 'lucide-react';
 import ImageModal from './ImageModal';
 import ModelSelector from './ModelSelector';
 
@@ -29,8 +29,6 @@ const tools: { id: Tool; name: string; description: string; icon: React.ElementT
     { id: 'smart', name: 'Smart Mode', description: 'Automatically uses the best tool for the job.', icon: Sparkles },
     { id: 'webSearch', name: 'Web Search', description: 'Searches the web for real-time info.', icon: Globe },
     { id: 'urlReader', name: 'URL Reader', description: 'Reads content from a web page URL.', icon: Link },
-    { id: 'weather', name: 'Weather', description: 'Gets real-time weather information.', icon: CloudSun },
-    { id: 'maps', name: 'Maps', description: 'Provides location, distance, and map info.', icon: Map },
     { id: 'thinking', name: 'Thinking', description: 'Shows the AI\'s step-by-step thought process.', icon: BrainCircuit },
     { id: 'translator', name: 'Translator', description: 'Translates text between languages.', icon: Languages },
 ];

@@ -7,7 +7,6 @@ import { planResponse } from '../services/geminiService';
 import { updateMemory, summarizeConversation } from '../services/memoryService';
 import { processAndSaveCode, findRelevantCode } from '../services/codeService';
 import * as urlReaderService from '../services/urlReaderService';
-import { getWeather } from '../services/weatherService';
 import { getFriendlyErrorMessage } from '../utils/errorUtils';
 import { useDebug } from '../contexts/DebugContext';
 import { developerProfile } from '../services/developerProfile';
@@ -44,41 +43,6 @@ const estimateTokens = (text: string): number => {
     if (!text) return 0;
     return Math.ceil(text.length / 4);
 };
-
-const getUserLocation = (): Promise<{ latitude: number, longitude: number }> => {
-    return new Promise((resolve, reject) => {
-        if (!navigator.geolocation) {
-            reject(new Error("Geolocation is not supported by this browser."));
-            return;
-        }
-
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                resolve({
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                });
-            },
-            (error) => {
-                switch (error.code) {
-                    case error.PERMISSION_DENIED:
-                        reject(new Error("User denied the request for Geolocation."));
-                        break;
-                    case error.POSITION_UNAVAILABLE:
-                        reject(new Error("Location information is unavailable."));
-                        break;
-                    case error.TIMEOUT:
-                        reject(new Error("The request to get user location timed out."));
-                        break;
-                    default:
-                        reject(new Error("An unknown error occurred while getting location."));
-                        break;
-                }
-            }
-        );
-    });
-};
-
 
 export const useChatHandler = ({
     apiKey,
@@ -206,8 +170,6 @@ export const useChatHandler = ({
                 'urlReader': () => { plan.isUrlReadRequest = true; isWebSearchEnabled = false; isThinkingEnabled = false; isImageAnalysisRequest = false; },
                 'thinking': () => { isThinkingEnabled = true; isWebSearchEnabled = false; plan.isUrlReadRequest = false; },
                 'webSearch': () => { isWebSearchEnabled = true; isThinkingEnabled = false; plan.isUrlReadRequest = false; isImageAnalysisRequest = false; },
-                'weather': () => { plan.isWeatherRequest = true; isWebSearchEnabled = false; isThinkingEnabled = false; },
-                'maps': () => { plan.isMapsRequest = true; plan.isNearbyRequest = true; isWebSearchEnabled = false; isThinkingEnabled = false; }
             };
             
             if (toolOverrides[selectedTool]) {
@@ -272,43 +234,6 @@ export const useChatHandler = ({
                 } catch (urlError: any) {
                     return handleToolError(urlError.message);
                 }
-            } else if (plan.isWeatherRequest) {
-                toolInUse = 'weather';
-                if (!plan.location) {
-                     return handleToolError("I couldn't figure out which location you're asking about.");
-                }
-                updateConversationMessages(currentConversationId, prev => prev.map((m, i) => i === prev.length - 1 ? { ...m, isPlanning: false, toolInUse } : m));
-                try {
-                    const weatherData = await getWeather(plan.location);
-                    finalPromptForModel = `[WEATHER DATA for ${plan.location}]:\n${JSON.stringify(weatherData)}\n\n[USER PROMPT]:\n"${fullPrompt}"\n\nBased on the weather data, answer the user's prompt in a friendly, conversational way. Use emojis where appropriate.`;
-                } catch (weatherError: any) {
-                    return handleToolError(weatherError.message);
-                }
-            } else if (plan.isNearbyRequest) {
-                toolInUse = 'maps';
-                updateConversationMessages(currentConversationId, prev => prev.map((m, i) => i === prev.length - 1 ? { ...m, isPlanning: false, toolInUse } : m));
-                try {
-                    const { latitude, longitude } = await getUserLocation();
-                    finalPromptForModel = `The user is at latitude ${latitude} and longitude ${longitude}. They want to find nearby "${plan.nearbyQuery || fullPrompt}".
-
-First, provide a friendly, conversational response summarizing the places you found. For example, you could say "I found a few great spots for you!" and then list 2-3 of them with key details in a bulleted or numbered list.
-
-After your text response, you MUST provide the map data. This data must be a valid JSON array of all results, wrapped in <MULTIMAP> tags like this: <MULTIMAP>[{"name": "...", "details": "...", "lat": ..., "lon": ...}]</MULTIMAP>.
-
-For each result in the JSON, provide:
-- "name": The name of the place.
-- "details": A short, helpful description (e.g., address, type of cuisine, rating).
-- "lat": Latitude.
-- "lon": Longitude.
-
-Your final, complete response must contain both the conversational text and the <MULTIMAP> block.`;
-            
-                } catch (locationError: any) {
-                    logError(locationError);
-                    finalPromptForModel = `The user wants to find nearby "${plan.nearbyQuery || fullPrompt}", but their precise location is unavailable. Ask them to provide a city or address to search in.`;
-                }
-            } else if (plan.isMapsRequest) {
-                 finalPromptForModel = `[MAPS TASK]: The user's map-related query is: "${plan.mapQuery || fullPrompt}". Answer it helpfully. If displaying a map is the best response, you MUST generate and include a valid iframe embed code from openstreetmap.org and wrap it in <MAP> tags, like so: <MAP><iframe width="425" height="350" src="https://www.openstreetmap.org/export/embed.html?bbox=..." ...></iframe></MAP>. Do not add any text inside the MAP tags.`;
             }
 
 

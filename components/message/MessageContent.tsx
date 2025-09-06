@@ -3,7 +3,7 @@ import { ChatMessage as ChatMessageType } from '../../types';
 import MarkdownRenderer from '../MarkdownRenderer';
 import ThinkingProcess from '../ThinkingProcess';
 import WebSearchAnimation from '../WebSearchAnimation';
-import ToolUsageAnimation from '../ToolUsageAnimation';
+import UrlReaderAnimation from '../ToolUsageAnimation';
 import { Brain } from 'lucide-react';
 
 const SkeletonLoader: React.FC = () => (
@@ -74,7 +74,7 @@ const MessageContent: React.FC<MessageContentProps> = ({
 
             {isPlanning && <SkeletonLoader />}
             
-            {!isPlanning && toolInUse && <ToolUsageAnimation toolInUse={toolInUse} isLongToolUse={isLongToolUse} />}
+            {!isPlanning && toolInUse && <UrlReaderAnimation isLongToolUse={isLongToolUse} />}
 
             {!isPlanning && !toolInUse && showThinkingProcess && (
                 <ThinkingProcess 

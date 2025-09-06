@@ -16,20 +16,13 @@ Set to true if the user asks who created you, your developer, or your origin.
 **4. Capabilities Inquiry (isCapabilitiesRequest: true):**
 Set to true if the user asks what you can do, about your tools, or your abilities (e.g., "what are your skills?", "can you generate images?").
 
-**5. Weather Inquiry (isWeatherRequest: true):**
-Set to true for queries about weather conditions. Extract the primary location into 'location'.
-
-**6. Maps & Nearby Inquiries:**
-- **Single Location/Directions (isMapsRequest: true):** Set to true for queries about distances, directions, or a *single specific location* (e.g., "distance to Eiffel Tower", "map of London"). Extract the core question into 'mapQuery'.
-- **Nearby Places (isNearbyRequest: true):** Set to true for queries about *multiple, non-specific places* near a location (e.g., "cafes near me", "parks around here"). Extract the type of place into 'nearbyQuery'.
-
-**7. File Analysis:**
+**5. File Analysis:**
 - If a file is attached, always set 'needsThinking' to true.
 
-**8. Complex Prompts (needsThinking: true):**
+**6. Complex Prompts (needsThinking: true):**
 Set to true for prompts requiring analysis, creativity, multi-step reasoning, coding, or file analysis.
 
-**9. Simple Prompts (needsThinking: false):**
+**7. Simple Prompts (needsThinking: false):**
 Set to false for basic conversational turns.
 
 **Output:**
@@ -40,12 +33,6 @@ Respond ONLY with a valid JSON object based on the prompt analysis.
 - \`isUrlReadRequest\` (boolean): URL found and needs to be analyzed.
 - \`isCreatorRequest\` (boolean): User is asking about the developer.
 - \`isCapabilitiesRequest\` (boolean): User is asking about your abilities.
-- \`isWeatherRequest\` (boolean, optional): User is asking about the weather.
-- \`location\` (string, optional): The location for the weather query.
-- \`isMapsRequest\` (boolean, optional): User is asking a map-related question.
-- \`mapQuery\` (string, optional): The core map-related query from the user.
-- \`isNearbyRequest\` (boolean, optional): User is asking for nearby places.
-- \`nearbyQuery\` (string, optional): The type of place to search for nearby.
 - \`needsThinking\` (boolean): Complex task.
 - \`needsCodeContext\` (boolean): Prompt relates to previous code.
 - \`thoughts\` (array, optional): If 'needsThinking' is true, provide a step-by-step plan.
@@ -64,12 +51,6 @@ export interface ResponsePlan {
     isUrlReadRequest: boolean;
     isCreatorRequest: boolean;
     isCapabilitiesRequest: boolean;
-    isWeatherRequest?: boolean;
-    location?: string;
-    isMapsRequest?: boolean;
-    mapQuery?: string;
-    isNearbyRequest?: boolean;
-    nearbyQuery?: string;
     needsThinking: boolean;
     needsCodeContext: boolean;
     thoughts: ThoughtStep[];
@@ -100,12 +81,6 @@ export const planResponse = async (prompt: string, image?: { base64: string; mim
                         isUrlReadRequest: { type: Type.BOOLEAN },
                         isCreatorRequest: { type: Type.BOOLEAN },
                         isCapabilitiesRequest: { type: Type.BOOLEAN },
-                        isWeatherRequest: { type: Type.BOOLEAN },
-                        location: { type: Type.STRING },
-                        isMapsRequest: { type: Type.BOOLEAN },
-                        mapQuery: { type: Type.STRING },
-                        isNearbyRequest: { type: Type.BOOLEAN },
-                        nearbyQuery: { type: Type.STRING },
                         needsThinking: { type: Type.BOOLEAN },
                         needsCodeContext: { type: Type.BOOLEAN },
                         thoughts: {
@@ -141,7 +116,7 @@ export const planResponse = async (prompt: string, image?: { base64: string; mim
         const result = JSON.parse(jsonText);
 
         // If a tool-based request is made, disable general thinking to go straight to the task.
-        if (result.needsWebSearch || result.isUrlReadRequest || result.isWeatherRequest || result.isMapsRequest || result.isNearbyRequest) {
+        if (result.needsWebSearch || result.isUrlReadRequest) {
             result.needsThinking = false;
             result.thoughts = [];
         }

@@ -1,7 +1,7 @@
 import React from 'react';
 
 export type ChatModel = 'gemini-2.5-flash' | 'gemini-2.5-pro';
-export type Tool = 'smart' | 'webSearch' | 'thinking' | 'translator' | 'urlReader' | 'weather' | 'maps';
+export type Tool = 'smart' | 'webSearch' | 'thinking' | 'translator' | 'urlReader';
 export type View = 'chat' | 'memory' | 'translator' | 'usage';
 
 export type MessageRole = 'user' | 'model';
@@ -27,13 +27,6 @@ export interface ThoughtStep {
   concise_step: string;
 }
 
-export interface Location {
-  name: string;
-  details: string;
-  lat: number;
-  lon: number;
-}
-
 export interface ChatMessage {
   id: string;
   role: MessageRole;
@@ -56,7 +49,7 @@ export interface ChatMessage {
   isAnalyzingImage?: boolean;
   isAnalyzingFile?: boolean;
   isPlanning?: boolean;
-  toolInUse?: 'url' | 'weather' | 'maps';
+  toolInUse?: 'url';
   isLongToolUse?: boolean;
   memoryUpdated?: boolean;
   inputTokens?: number; // User prompt tokens
@@ -114,4 +107,12 @@ export interface ConsoleLogEntry {
     timestamp: string;
     message: string;
     stack?: string;
+}
+
+// FIX: Add Location interface for the InteractiveMap component.
+export interface Location {
+    lat: number;
+    lon: number;
+    name?: string;
+    details?: string;
 }
