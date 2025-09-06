@@ -292,7 +292,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
                  {showConversationJumper && (
                     <>
                         <button
-                            onClick={() => {
+                            onClick={(e) => {
+                                e.preventDefault();
                                 if ('vibrate' in navigator) navigator.vibrate(20);
                                 onNavigate('up');
                             }}
@@ -303,7 +304,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
                             <ChevronUp className="h-5 w-5" />
                         </button>
                         <button
-                            onClick={() => {
+                            onClick={(e) => {
+                                e.preventDefault();
                                 if ('vibrate' in navigator) navigator.vibrate(20);
                                 onNavigate('down');
                             }}
