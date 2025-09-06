@@ -259,10 +259,6 @@ export const useChatHandler = ({
                 });
             }, 20000); // 20 seconds for any tool
 
-            const toolContexts: string[] = [];
-            const toolPromises: Promise<void>[] = [];
-
-            // URL Reader is a special case that rewrites the prompt and is mutually exclusive.
             if (plan.isUrlReadRequest) {
                 toolInUse = 'url';
                 const urlMatch = fullPrompt.match(/(https?:\/\/[^\s]+)/);
@@ -276,83 +272,43 @@ export const useChatHandler = ({
                 } catch (urlError: any) {
                     return handleToolError(urlError.message);
                 }
-            } else {
-                // Handle other tools which can be combined.
-                let locationForTools = plan.location;
-
-                // Time Request
-                if (plan.isTimeRequest) {
-                    toolContexts.push('[TASK]: You must generate the current time data.');
+            } else if (plan.isWeatherRequest) {
+                toolInUse = 'weather';
+                if (!plan.location) {
+                     return handleToolError("I couldn't figure out which location you're asking about.");
                 }
-
-                // Weather Request
-                if (plan.isWeatherRequest) {
-                    toolInUse = toolInUse || 'weather';
-                    const fetchWeather = (loc: string) => getWeather(loc)
-                        .then(weatherData => {
-                            const weatherJsonString = JSON.stringify(weatherData);
-                            toolContexts.push(`[WEATHER DATA for ${weatherData.location}]:\n${weatherJsonString}`);
-                            if (!locationForTools) locationForTools = weatherData.location; // Save location for other tools
-                        })
-                        .catch(err => {
-                            toolContexts.push(`[WEATHER TOOL ERROR]: ${err.message}`);
-                        });
-
-                    if (locationForTools) {
-                        toolPromises.push(fetchWeather(locationForTools));
-                    } else {
-                        // Attempt to get user's location as a fallback
-                        toolPromises.push(
-                            getUserLocation()
-                                .then(coords => fetchWeather(`lat=${coords.latitude}&lon=${coords.longitude}`))
-                                .catch(err => {
-                                    toolContexts.push(`[WEATHER TOOL ERROR]: Could not get weather data. I need a location, and I was unable to get your current location. Error: ${err.message}`);
-                                })
-                        );
-                    }
+                updateConversationMessages(currentConversationId, prev => prev.map((m, i) => i === prev.length - 1 ? { ...m, isPlanning: false, toolInUse } : m));
+                try {
+                    const weatherData = await getWeather(plan.location);
+                    finalPromptForModel = `[WEATHER DATA for ${plan.location}]:\n${JSON.stringify(weatherData)}\n\n[USER PROMPT]:\n"${fullPrompt}"\n\nBased on the weather data, answer the user's prompt in a friendly, conversational way. Use emojis where appropriate.`;
+                } catch (weatherError: any) {
+                    return handleToolError(weatherError.message);
                 }
-                
-                // Nearby Places Request
-                if (plan.isNearbyRequest) {
-                    toolInUse = toolInUse || 'maps';
-                    toolPromises.push(
-                        getUserLocation()
-                            .then(({ latitude, longitude }) => {
-                                toolContexts.push(`[NEARBY SEARCH CONTEXT]: The user is at latitude ${latitude} and longitude ${longitude}. They want to find nearby "${plan.nearbyQuery || fullPrompt}".`);
-                            })
-                            .catch(err => {
-                                logError(err);
-                                toolContexts.push(`[NEARBY SEARCH ERROR]: The user wants to find nearby "${plan.nearbyQuery || fullPrompt}", but their precise location is unavailable. You should ask them to provide a city or address to search in.`);
-                            })
-                    );
-                }
+            } else if (plan.isNearbyRequest) {
+                toolInUse = 'maps';
+                updateConversationMessages(currentConversationId, prev => prev.map((m, i) => i === prev.length - 1 ? { ...m, isPlanning: false, toolInUse } : m));
+                try {
+                    const { latitude, longitude } = await getUserLocation();
+                    finalPromptForModel = `The user is at latitude ${latitude} and longitude ${longitude}. They want to find nearby "${plan.nearbyQuery || fullPrompt}".
 
-                // Single Map Request
-                if (plan.isMapsRequest && !plan.isNearbyRequest) {
-                    toolInUse = toolInUse || 'maps';
-                    toolContexts.push(`[MAPS TASK]: The user's map-related query is: "${plan.mapQuery || fullPrompt}". Answer it helpfully. If displaying a map is the best response, you MUST generate and include a valid iframe embed code from openstreetmap.org and wrap it in <MAP> tags.`);
-                }
-                
-                if (toolInUse) {
-                     updateConversationMessages(currentConversationId, prev => prev.map((m, i) => i === prev.length - 1 ? { ...m, isPlanning: false, toolInUse } : m));
-                }
-                
-                // Wait for all data fetching tools to finish
-                await Promise.all(toolPromises);
+First, provide a friendly, conversational response summarizing the places you found. For example, you could say "I found a few great spots for you!" and then list 2-3 of them with key details in a bulleted or numbered list.
 
-                // If any tools were used, construct the final composite prompt
-                if (toolContexts.length > 0) {
-                    let instruction = `Based on the user's prompt and the provided context/data below, formulate a comprehensive and conversational response. You must address all parts of the user's query.`;
-                    
-                    if (toolContexts.some(c => c.includes('[WEATHER DATA'))) instruction += `\n- After your text response about the weather, you MUST include the original weather data as a valid JSON object, wrapped in <WEATHER> tags.`;
-                    if (toolContexts.some(c => c.includes('[TASK]: Generate the current time data'))) instruction += `\n- For the time request, you MUST generate the current time data as a valid JSON object and wrap it in <TIME> tags.`;
-                    if (toolContexts.some(c => c.includes('[NEARBY SEARCH CONTEXT]'))) instruction += `\n- For the nearby search, summarize the places you found conversationally. Then, provide the map data as a valid JSON array of all results, wrapped in <MULTIMAP> tags. Each result must contain "name", "details", "lat", and "lon".`;
-                    if (toolContexts.some(c => c.includes('[MAPS TASK]'))) instruction += `\n- For the map display task, if a map is appropriate, you MUST generate and include a valid iframe embed code from openstreetmap.org and wrap it in <MAP> tags.`;
+After your text response, you MUST provide the map data. This data must be a valid JSON array of all results, wrapped in <MULTIMAP> tags like this: <MULTIMAP>[{"name": "...", "details": "...", "lat": ..., "lon": ...}]</MULTIMAP>.
 
-                    instruction += `\n\nYour final, complete response must contain both the conversational text and all required data tags.`;
-                    
-                    finalPromptForModel = `${instruction}\n\n[USER PROMPT]:\n"${fullPrompt}"\n\n[CONTEXT & DATA]:\n${toolContexts.join('\n\n')}`;
+For each result in the JSON, provide:
+- "name": The name of the place.
+- "details": A short, helpful description (e.g., address, type of cuisine, rating).
+- "lat": Latitude.
+- "lon": Longitude.
+
+Your final, complete response must contain both the conversational text and the <MULTIMAP> block.`;
+            
+                } catch (locationError: any) {
+                    logError(locationError);
+                    finalPromptForModel = `The user wants to find nearby "${plan.nearbyQuery || fullPrompt}", but their precise location is unavailable. Ask them to provide a city or address to search in.`;
                 }
+            } else if (plan.isMapsRequest) {
+                 finalPromptForModel = `[MAPS TASK]: The user's map-related query is: "${plan.mapQuery || fullPrompt}". Answer it helpfully. If displaying a map is the best response, you MUST generate and include a valid iframe embed code from openstreetmap.org and wrap it in <MAP> tags, like so: <MAP><iframe width="425" height="350" src="https://www.openstreetmap.org/export/embed.html?bbox=..." ...></iframe></MAP>. Do not add any text inside the MAP tags.`;
             }
 
 
@@ -501,7 +457,7 @@ export const useChatHandler = ({
 
                         // If a tool that adds significant content to the prompt was used (image, url, search), show the total prompt tokens to reflect the tool's cost.
                         // Otherwise (for normal chat or creator requests), only show the user's text tokens to hide history/system prompt cost.
-                        const toolUsed = toolInUse || isImageAnalysisRequest || isFileAnalysisRequest || isWebSearchEnabled || toolContexts.length > 0;
+                        const toolUsed = toolInUse || isImageAnalysisRequest || isFileAnalysisRequest || isWebSearchEnabled;
                         const displayInputTokens = toolUsed ? totalPromptTokens : userTextTokens;
                         const systemTokens = toolUsed ? 0 : totalPromptTokens - userTextTokens;
 

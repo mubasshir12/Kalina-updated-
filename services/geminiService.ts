@@ -1,9 +1,7 @@
 import { Part, Type } from "@google/genai";
 import { getAiClient } from "./aiClient";
 
-const planAndThinkSystemInstruction = `You are an AI planner. Analyze the user's prompt to determine the best response strategy by classifying it. A single prompt can trigger multiple tools; set all relevant boolean flags to true.
-
-**Example:** For "what's the time and the weather in Paris?", you must set both 'isTimeRequest' and 'isWeatherRequest' to true, and set 'location' to 'Paris'.
+const planAndThinkSystemInstruction = `You are an AI planner. Analyze the user's prompt to determine the best response strategy by classifying it. Your primary goal is to distinguish between web search, URL read, complex, and simple prompts.
 
 **1. Web Search (needsWebSearch: true):**
 Set to true for queries needing real-time or up-to-date info (news, events, live data).
@@ -18,23 +16,20 @@ Set to true if the user asks who created you, your developer, or your origin.
 **4. Capabilities Inquiry (isCapabilitiesRequest: true):**
 Set to true if the user asks what you can do, about your tools, or your abilities (e.g., "what are your skills?", "can you generate images?").
 
-**5. Time Inquiry (isTimeRequest: true):**
-Set to true for queries about the current time or date.
-
-**6. Weather Inquiry (isWeatherRequest: true):**
+**5. Weather Inquiry (isWeatherRequest: true):**
 Set to true for queries about weather conditions. Extract the primary location into 'location'.
 
-**7. Maps & Nearby Inquiries:**
+**6. Maps & Nearby Inquiries:**
 - **Single Location/Directions (isMapsRequest: true):** Set to true for queries about distances, directions, or a *single specific location* (e.g., "distance to Eiffel Tower", "map of London"). Extract the core question into 'mapQuery'.
 - **Nearby Places (isNearbyRequest: true):** Set to true for queries about *multiple, non-specific places* near a location (e.g., "cafes near me", "parks around here"). Extract the type of place into 'nearbyQuery'.
 
-**8. File Analysis:**
+**7. File Analysis:**
 - If a file is attached, always set 'needsThinking' to true.
 
-**9. Complex Prompts (needsThinking: true):**
+**8. Complex Prompts (needsThinking: true):**
 Set to true for prompts requiring analysis, creativity, multi-step reasoning, coding, or file analysis.
 
-**10. Simple Prompts (needsThinking: false):**
+**9. Simple Prompts (needsThinking: false):**
 Set to false for basic conversational turns.
 
 **Output:**
@@ -45,7 +40,6 @@ Respond ONLY with a valid JSON object based on the prompt analysis.
 - \`isUrlReadRequest\` (boolean): URL found and needs to be analyzed.
 - \`isCreatorRequest\` (boolean): User is asking about the developer.
 - \`isCapabilitiesRequest\` (boolean): User is asking about your abilities.
-- \`isTimeRequest\` (boolean, optional): User is asking about the current time.
 - \`isWeatherRequest\` (boolean, optional): User is asking about the weather.
 - \`location\` (string, optional): The location for the weather query.
 - \`isMapsRequest\` (boolean, optional): User is asking a map-related question.
@@ -70,7 +64,6 @@ export interface ResponsePlan {
     isUrlReadRequest: boolean;
     isCreatorRequest: boolean;
     isCapabilitiesRequest: boolean;
-    isTimeRequest?: boolean;
     isWeatherRequest?: boolean;
     location?: string;
     isMapsRequest?: boolean;
@@ -107,7 +100,6 @@ export const planResponse = async (prompt: string, image?: { base64: string; mim
                         isUrlReadRequest: { type: Type.BOOLEAN },
                         isCreatorRequest: { type: Type.BOOLEAN },
                         isCapabilitiesRequest: { type: Type.BOOLEAN },
-                        isTimeRequest: { type: Type.BOOLEAN },
                         isWeatherRequest: { type: Type.BOOLEAN },
                         location: { type: Type.STRING },
                         isMapsRequest: { type: Type.BOOLEAN },
@@ -149,7 +141,7 @@ export const planResponse = async (prompt: string, image?: { base64: string; mim
         const result = JSON.parse(jsonText);
 
         // If a tool-based request is made, disable general thinking to go straight to the task.
-        if (result.needsWebSearch || result.isUrlReadRequest || result.isTimeRequest || result.isWeatherRequest || result.isMapsRequest || result.isNearbyRequest) {
+        if (result.needsWebSearch || result.isUrlReadRequest || result.isWeatherRequest || result.isMapsRequest || result.isNearbyRequest) {
             result.needsThinking = false;
             result.thoughts = [];
         }

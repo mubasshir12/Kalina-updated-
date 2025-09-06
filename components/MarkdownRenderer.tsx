@@ -1,9 +1,7 @@
 import React from 'react';
-import { GroundingChunk, Location, WeatherData, TimeData } from '../types';
+import { GroundingChunk, Location } from '../types';
 import CodeBlock from './CodeBlock';
 import InteractiveMap from './InteractiveMap';
-import WeatherCard from './WeatherCard';
-import TimeCard from './TimeCard';
 
 // Renders a single source citation as a clickable text-based tag.
 const Citation: React.FC<{ source: GroundingChunk; index: number }> = ({ source, index }) => {
@@ -122,8 +120,8 @@ interface MarkdownRendererProps {
 }
 
 const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, sources, onContentUpdate, isStreaming, setCodeForPreview }) => {
-    // Regex to split content by <MAP>, <MULTIMAP>, <WEATHER>, or <TIME> tags, keeping the content
-    const contentParts = content.split(/(<MAP>[\s\S]*?<\/MAP>|<MULTIMAP>[\s\S]*?<\/MULTIMAP>|<WEATHER>[\s\S]*?<\/WEATHER>|<TIME>[\s\S]*?<\/TIME>)/g);
+    // Regex to split content by <MAP> or <MULTIMAP> tags, keeping the map content
+    const contentParts = content.split(/(<MAP>[\s\S]*?<\/MAP>|<MULTIMAP>[\s\S]*?<\/MULTIMAP>)/g);
     
     const elements: React.ReactNode[] = contentParts.flatMap((part, partIndex) => {
         if (part.startsWith('<MAP>') && part.endsWith('</MAP>')) {
@@ -139,28 +137,6 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, sources, o
             } catch (e) {
                 console.error("Failed to parse MULTIMAP JSON:", e);
                 return [<div key={`multimap-error-${partIndex}`} className="text-red-500 text-sm">[Error: Could not render map data]</div>];
-            }
-        }
-        
-        if (part.startsWith('<WEATHER>') && part.endsWith('</WEATHER>')) {
-            const jsonString = part.substring(9, part.length - 10);
-            try {
-                const weatherData: WeatherData = JSON.parse(jsonString);
-                return [<WeatherCard key={`weather-${partIndex}`} data={weatherData} />];
-            } catch (e) {
-                console.error("Failed to parse WEATHER JSON:", e);
-                return [<div key={`weather-error-${partIndex}`} className="text-red-500 text-sm">[Error: Could not render weather data]</div>];
-            }
-        }
-
-        if (part.startsWith('<TIME>') && part.endsWith('</TIME>')) {
-            const jsonString = part.substring(6, part.length - 7);
-            try {
-                const timeData: TimeData = JSON.parse(jsonString);
-                return [<TimeCard key={`time-${partIndex}`} data={timeData} />];
-            } catch (e) {
-                console.error("Failed to parse TIME JSON:", e);
-                return [<div key={`time-error-${partIndex}`} className="text-red-500 text-sm">[Error: Could not render time data]</div>];
             }
         }
 

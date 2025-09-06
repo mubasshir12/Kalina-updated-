@@ -34,25 +34,6 @@ export interface Location {
   lon: number;
 }
 
-export interface TimeData {
-  time: string;
-  date: string;
-  timezone: string;
-}
-
-export interface WeatherData {
-  location: string;
-  temperature: number;
-  feels_like: number;
-  min_temp: number;
-  max_temp: number;
-  description: string;
-  humidity: number;
-  wind_speed: number;
-  icon: string;
-  id: number;
-}
-
 export interface ChatMessage {
   id: string;
   role: MessageRole;
