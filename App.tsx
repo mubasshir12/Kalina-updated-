@@ -104,7 +104,8 @@ const App: React.FC = () => {
     const activeMessageIndex = useScrollSpy(scrollContainerRef, userMessageIndices);
 
     const handleNavigate = (direction: 'up' | 'down') => {
-        if (activeMessageIndex === null || userMessageIndices.length < 2) return;
+        const scrollContainer = scrollContainerRef.current;
+        if (!scrollContainer || activeMessageIndex === null || userMessageIndices.length < 2) return;
 
         const currentIndexInNavigator = userMessageIndices.indexOf(activeMessageIndex);
         if (currentIndexInNavigator === -1) {
@@ -112,7 +113,9 @@ const App: React.FC = () => {
             const nearestUserIndex = userMessageIndices.slice().reverse().find(i => i < (activeMessageIndex || 0));
             if (nearestUserIndex !== undefined) {
                 const element = document.getElementById(`message-${nearestUserIndex}`);
-                element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                if (element) {
+                    scrollContainer.scrollTo({ top: element.offsetTop, behavior: 'smooth' });
+                }
             }
             return;
         };
@@ -127,12 +130,12 @@ const App: React.FC = () => {
         if (targetIndexInNavigator >= 0 && targetIndexInNavigator < userMessageIndices.length) {
             const targetMessageIndex = userMessageIndices[targetIndexInNavigator];
             const element = document.getElementById(`message-${targetMessageIndex}`);
-            element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (element) {
+                scrollContainer.scrollTo({ top: element.offsetTop, behavior: 'smooth' });
+            }
         } else if (direction === 'down' && targetIndexInNavigator >= userMessageIndices.length) {
             // If trying to navigate past the last message, just scroll to bottom.
-             if (scrollContainerRef.current) {
-                scrollContainerRef.current.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: 'smooth' });
-            }
+             scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
         }
     };
     
