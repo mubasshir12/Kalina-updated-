@@ -1,5 +1,4 @@
 
-
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Suggestion, Tool, ChatModel, ModelInfo, View, ConsoleMode } from './types';
 import { initializeAiClient } from './services/aiClient';
@@ -101,43 +100,54 @@ const App: React.FC = () => {
         }, [] as number[]);
     }, [activeConversation]);
 
+    // useScrollSpy detects the current message based on scroll position
     const activeMessageIndex = useScrollSpy(scrollContainerRef, userMessageIndices);
+    
+    // Dedicated state for the navigator to prevent race conditions
+    const [navigatorIndex, setNavigatorIndex] = useState<number | null>(null);
 
+    // Effect to sync the navigator's state with the scroll spy's detected position
+    useEffect(() => {
+        if (activeMessageIndex !== null) {
+            const indexInNavigator = userMessageIndices.indexOf(activeMessageIndex);
+            if (indexInNavigator !== -1) {
+                setNavigatorIndex(indexInNavigator);
+            }
+        } else if (userMessageIndices.length > 0) {
+            // Initialize to the last message if spy hasn't picked anything up
+            setNavigatorIndex(userMessageIndices.length - 1);
+        } else {
+            setNavigatorIndex(null);
+        }
+    }, [activeMessageIndex, userMessageIndices]);
+
+    // Reworked handleNavigate to use its own state for reliability
     const handleNavigate = (direction: 'up' | 'down') => {
         const scrollContainer = scrollContainerRef.current;
-        if (!scrollContainer || activeMessageIndex === null || userMessageIndices.length < 2) return;
+        if (!scrollContainer || navigatorIndex === null || userMessageIndices.length < 2) return;
 
-        const currentIndexInNavigator = userMessageIndices.indexOf(activeMessageIndex);
-        if (currentIndexInNavigator === -1) {
-            // If current index not found (e.g., scrolled to a model message), find the nearest user message to navigate from.
-            const nearestUserIndex = userMessageIndices.slice().reverse().find(i => i < (activeMessageIndex || 0));
-            if (nearestUserIndex !== undefined) {
-                const element = document.getElementById(`message-${nearestUserIndex}`);
-                if (element) {
-                    scrollContainer.scrollTo({ top: element.offsetTop, behavior: 'smooth' });
-                }
-            }
-            return;
-        };
-
-        let targetIndexInNavigator = -1;
+        let targetIndexInNavigator = navigatorIndex;
         if (direction === 'up') {
-            targetIndexInNavigator = currentIndexInNavigator - 1;
+            targetIndexInNavigator = Math.max(0, navigatorIndex - 1);
         } else { // 'down'
-            targetIndexInNavigator = currentIndexInNavigator + 1;
+            targetIndexInNavigator = Math.min(userMessageIndices.length - 1, navigatorIndex + 1);
         }
-
-        if (targetIndexInNavigator >= 0 && targetIndexInNavigator < userMessageIndices.length) {
+        
+        if (targetIndexInNavigator !== navigatorIndex) {
+            setNavigatorIndex(targetIndexInNavigator); // Update state immediately for next click
             const targetMessageIndex = userMessageIndices[targetIndexInNavigator];
             const element = document.getElementById(`message-${targetMessageIndex}`);
             if (element) {
                 scrollContainer.scrollTo({ top: element.offsetTop, behavior: 'smooth' });
             }
-        } else if (direction === 'down' && targetIndexInNavigator >= userMessageIndices.length) {
-            // If trying to navigate past the last message, just scroll to bottom.
-             scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
+        } else if (direction === 'down' && targetIndexInNavigator === userMessageIndices.length - 1) {
+            // If at the last message and clicking down, scroll to the very bottom
+            scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
         }
     };
+    
+    const isAtStart = navigatorIndex !== null && navigatorIndex === 0;
+    const isAtEnd = navigatorIndex !== null && userMessageIndices.length > 0 && navigatorIndex === userMessageIndices.length - 1;
     
     useEffect(() => {
         const observer = new MutationObserver(() => {
@@ -396,6 +406,8 @@ const App: React.FC = () => {
                                 onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
                                 showConversationJumper={!showWelcomeScreen && userMessageIndices.length > 1}
                                 onNavigate={handleNavigate}
+                                isAtStartOfConversation={isAtStart}
+                                isAtEndOfConversation={isAtEnd}
                             />
                         </div>
                     </div>

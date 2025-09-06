@@ -1,3 +1,4 @@
+
 import React, { useState, KeyboardEvent, useRef, ChangeEvent, useEffect } from 'react';
 import { Suggestion, Tool, ChatModel, ModelInfo } from '../types';
 import { Sparkles, ChevronDown, X, Paperclip, ArrowUp, Globe, BrainCircuit, Image, Expand, File, Presentation, FileText, Camera, Languages, Link, ClipboardPaste, ChevronUp, CloudSun, Map } from 'lucide-react';
@@ -20,6 +21,8 @@ interface ChatInputProps {
   onOpenApiKeyModal: () => void;
   showConversationJumper: boolean;
   onNavigate: (direction: 'up' | 'down') => void;
+  isAtStartOfConversation: boolean;
+  isAtEndOfConversation: boolean;
 }
 
 const tools: { id: Tool; name: string; description: string; icon: React.ElementType }[] = [
@@ -61,6 +64,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
     onOpenApiKeyModal,
     showConversationJumper,
     onNavigate,
+    isAtStartOfConversation,
+    isAtEndOfConversation,
 }) => {
   const [input, setInput] = useState('');
   const [urlInput, setUrlInput] = useState('');
@@ -297,7 +302,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                                 if ('vibrate' in navigator) navigator.vibrate(20);
                                 onNavigate('up');
                             }}
-                            disabled={isLoading}
+                            disabled={isLoading || isAtStartOfConversation}
                             className="flex items-center justify-center w-10 h-10 text-neutral-700 dark:text-gray-300 bg-neutral-100 dark:bg-[#2E2F33] border border-neutral-300 dark:border-gray-600 rounded-full hover:bg-neutral-200 dark:hover:bg-gray-700/70 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             aria-label="Jump to previous message"
                         >
@@ -309,7 +314,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                                 if ('vibrate' in navigator) navigator.vibrate(20);
                                 onNavigate('down');
                             }}
-                            disabled={isLoading}
+                            disabled={isLoading || isAtEndOfConversation}
                             className="flex items-center justify-center w-10 h-10 text-neutral-700 dark:text-gray-300 bg-neutral-100 dark:bg-[#2E2F33] border border-neutral-300 dark:border-gray-600 rounded-full hover:bg-neutral-200 dark:hover:bg-gray-700/70 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             aria-label="Jump to next message"
                         >
