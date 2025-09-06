@@ -77,7 +77,10 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
             return (
                 <main className="relative z-10 flex-1 flex flex-col overflow-hidden">
                     <div className="flex-1 relative">
-                        <div ref={scrollContainerRef} className="absolute inset-0 overflow-y-auto">
+                        <div 
+                            ref={scrollContainerRef} 
+                            className={`absolute inset-0 ${!showWelcomeScreen ? 'overflow-y-auto' : 'overflow-hidden'}`}
+                        >
                            {showWelcomeScreen ? (
                                 <WelcomeScreen onSelectSuggestion={handleSelectSuggestion} />
                             ) : (
