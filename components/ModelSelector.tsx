@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { ChatModel, ModelInfo } from '../types';
@@ -8,6 +9,7 @@ interface ModelSelectorProps {
     onSelectChatModel: (model: ChatModel) => void;
     apiKey: string | null;
     onOpenApiKeyModal: () => void;
+    isJumperVisible?: boolean;
 }
 
 const ModelSelector: React.FC<ModelSelectorProps> = ({
@@ -15,7 +17,8 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
     selectedChatModel,
     onSelectChatModel,
     apiKey,
-    onOpenApiKeyModal
+    onOpenApiKeyModal,
+    isJumperVisible,
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const selectorRef = useRef<HTMLDivElement>(null);
@@ -45,7 +48,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
                 onClick={() => setIsOpen(prev => !prev)}
                 className="flex items-center gap-2 px-3 py-1.5 bg-neutral-200/50 dark:bg-gray-800/50 rounded-xl text-neutral-800 dark:text-gray-200 hover:bg-neutral-300/50 dark:hover:bg-gray-700/70 transition-colors"
             >
-                <span className="font-semibold text-sm whitespace-nowrap text-amber-600 dark:text-amber-400">{selectedModelObject.name}</span>
+                <span className={`font-semibold whitespace-nowrap text-amber-600 dark:text-amber-400 transition-all duration-200 ${isJumperVisible ? 'text-xs' : 'text-sm'}`}>{selectedModelObject.name}</span>
                 <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
             {isOpen && (

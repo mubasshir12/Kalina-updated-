@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Wand2, Lightbulb, BarChart3, Code2, BugPlay, DatabaseZap, HelpCircle } from 'lucide-react';
+import { Lightbulb, BarChart3, Code2, BugPlay, DatabaseZap, HelpCircle, Mail, BookOpenText, GitCompareArrows, ChefHat, Share2, Presentation, Sparkles } from 'lucide-react';
 import { Suggestion } from '../types';
 
 interface WelcomeScreenProps {
@@ -7,11 +7,6 @@ interface WelcomeScreenProps {
 }
 
 const allSuggestions: Suggestion[] = [
-    { 
-        text: "Create an image", 
-        icon: <Wand2 className="h-5 w-5 text-green-500" />,
-        prompt: "Create an image of a majestic lion in a field of stars, digital art"
-    },
     { 
         text: "Make a plan", 
         icon: <Lightbulb className="h-5 w-5 text-yellow-500" />,
@@ -23,7 +18,7 @@ const allSuggestions: Suggestion[] = [
         prompt: "Here is some sample sales data: [Product A: 100 units, Product B: 150 units, Product C: 80 units]. Analyze it and provide insights."
     },
     { 
-        text: "Brainstorm", 
+        text: "Brainstorm ideas", 
         icon: <Lightbulb className="h-5 w-5 text-yellow-500" />,
         prompt: "Brainstorm 5 catchy slogans for a new eco-friendly water bottle brand."
     },
@@ -47,15 +42,88 @@ const allSuggestions: Suggestion[] = [
         icon: <DatabaseZap className="h-5 w-5 text-orange-500" />,
         prompt: "How can I optimize this SQL query for better performance on a large dataset? `SELECT u.id, p.product_name FROM users u JOIN purchases p ON u.id = p.user_id WHERE u.signup_date > '2023-01-01';`"
     },
+    {
+        text: "Draft an email",
+        icon: <Mail className="h-5 w-5 text-sky-500" />,
+        prompt: "Draft a professional email to my team about the upcoming project deadline."
+    },
+    {
+        text: "Summarize a topic",
+        icon: <BookOpenText className="h-5 w-5 text-indigo-500" />,
+        prompt: "Summarize the key events of World War II in three paragraphs."
+    },
+    {
+        text: "Compare and contrast",
+        icon: <GitCompareArrows className="h-5 w-5 text-green-500" />,
+        prompt: "Compare and contrast the pros and cons of React and Vue for web development."
+    },
+    {
+        text: "Get a recipe",
+        icon: <ChefHat className="h-5 w-5 text-rose-500" />,
+        prompt: "Give me a simple recipe for a classic lasagna."
+    },
+    {
+        text: "Write a social post",
+        icon: <Share2 className="h-5 w-5 text-cyan-500" />,
+        prompt: "Write an engaging Twitter post about the benefits of remote work."
+    },
+    {
+        text: "Outline a presentation",
+        icon: <Presentation className="h-5 w-5 text-lime-500" />,
+        prompt: "Create a 5-slide presentation outline about the importance of digital marketing."
+    },
+    {
+        text: "Tell me a fun fact",
+        icon: <Sparkles className="h-5 w-5 text-pink-500" />,
+        prompt: "Tell me a surprising fun fact about the ocean."
+    }
 ];
 
 
+const MarqueeRow: React.FC<{
+    suggestions: Suggestion[];
+    onSelectSuggestion: (suggestion: Suggestion) => void;
+    direction?: 'left' | 'right';
+}> = ({ suggestions, onSelectSuggestion, direction = 'left' }) => {
+    if (suggestions.length === 0) return null;
+
+    const animationDuration = suggestions.length * 8; // Adjust speed based on number of items
+
+    return (
+        <div className="marquee">
+            <div
+                className="marquee-content"
+                style={{
+                    animationDuration: `${animationDuration}s`,
+                    animationDirection: direction === 'right' ? 'reverse' : 'normal',
+                }}
+            >
+                {[...suggestions, ...suggestions].map((suggestion, index) => (
+                    <button
+                        key={`${suggestion.prompt}-${index}`}
+                        onClick={() => onSelectSuggestion(suggestion)}
+                        className="flex items-center gap-2.5 bg-white/70 dark:bg-[#1e1f22]/70 backdrop-blur-sm p-3 pl-4 pr-5 rounded-full hover:bg-neutral-100 dark:hover:bg-gray-800/50 transition-colors duration-200 border border-neutral-200 dark:border-gray-700 shadow-sm flex-shrink-0 mx-1.5"
+                        aria-label={suggestion.text}
+                    >
+                        {suggestion.icon}
+                        <span className="font-medium text-neutral-700 dark:text-gray-300 whitespace-nowrap">{suggestion.text}</span>
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectSuggestion }) => {
-    const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+    const [firstRow, setFirstRow] = useState<Suggestion[]>([]);
+    const [secondRow, setSecondRow] = useState<Suggestion[]>([]);
 
     const refreshSuggestions = useCallback(() => {
         const shuffled = [...allSuggestions].sort(() => 0.5 - Math.random());
-        setSuggestions(shuffled.slice(0, 4));
+        const half = Math.ceil(shuffled.length / 2);
+        setFirstRow(shuffled.slice(0, half));
+        setSecondRow(shuffled.slice(half));
     }, []);
 
     useEffect(() => {
@@ -64,32 +132,48 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectSuggestion }) => 
 
   return (
     <div className="relative flex flex-col items-center justify-center h-full text-center overflow-hidden">
-      <div className="relative z-10 w-full px-4">
+        <style>{`
+            .marquee {
+                position: relative;
+                width: 100%;
+                overflow: hidden;
+                -webkit-mask-image: linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%);
+                mask-image: linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%);
+            }
+            .marquee-content {
+                display: flex;
+                width: max-content;
+                animation-name: marquee;
+                animation-timing-function: linear;
+                animation-iteration-count: infinite;
+            }
+            .marquee:hover .marquee-content {
+                animation-play-state: paused;
+            }
+            @keyframes marquee {
+                from { transform: translateX(0); }
+                to { transform: translateX(-50%); }
+            }
+        `}</style>
+      <div className="relative z-10 w-full">
           <div className="mb-12">
             <h1 className="text-4xl md:text-5xl font-serif font-bold bg-gradient-to-br from-amber-600 to-orange-600 dark:from-amber-400 dark:to-orange-500 bg-clip-text text-transparent select-none">
                 What can I help with?
             </h1>
           </div>
-          <div className="flex flex-wrap justify-center items-center gap-3 w-full max-w-3xl mx-auto">
-            {suggestions.map((suggestion, index) => (
-                <button
-                    key={index}
-                    onClick={() => onSelectSuggestion(suggestion)}
-                    className="flex items-center gap-2.5 bg-white/70 dark:bg-[#1e1f22]/70 backdrop-blur-sm p-3 pl-4 pr-5 rounded-full hover:bg-neutral-100 dark:hover:bg-gray-800/50 transition-colors duration-200 border border-neutral-200 dark:border-gray-700 shadow-sm"
-                    aria-label={suggestion.text}
-                >
-                    {suggestion.icon}
-                    <span className="font-medium text-neutral-700 dark:text-gray-300">{suggestion.text}</span>
-                </button>
-            ))}
-            <button
-              onClick={refreshSuggestions}
-              className="bg-white/70 dark:bg-[#1e1f22]/70 backdrop-blur-sm p-3 px-5 rounded-full hover:bg-neutral-100 dark:hover:bg-gray-800/50 transition-colors duration-200 border border-neutral-200 dark:border-gray-700 shadow-sm"
-              aria-label="Show more suggestions"
-            >
-                <span className="font-medium text-neutral-700 dark:text-gray-300">More</span>
-            </button>
+          <div className="flex flex-col justify-center items-center gap-3 w-full">
+                <MarqueeRow suggestions={firstRow} onSelectSuggestion={onSelectSuggestion} direction="left" />
+                <MarqueeRow suggestions={secondRow} onSelectSuggestion={onSelectSuggestion} direction="right" />
           </div>
+           <div className="mt-8">
+                <button
+                onClick={refreshSuggestions}
+                className="bg-white/70 dark:bg-[#1e1f22]/70 backdrop-blur-sm p-3 px-5 rounded-full hover:bg-neutral-100 dark:hover:bg-gray-800/50 transition-colors duration-200 border border-neutral-200 dark:border-gray-700 shadow-sm"
+                aria-label="Show new suggestions"
+                >
+                    <span className="font-medium text-neutral-700 dark:text-gray-300">New Suggestions</span>
+                </button>
+           </div>
         </div>
     </div>
   );

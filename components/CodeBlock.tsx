@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Copy, Check, Play } from 'lucide-react';
 import CodePreviewModal from './CodePreviewModal';
@@ -9,35 +8,26 @@ declare const hljs: any;
 interface CodeBlockProps {
     language: string;
     code: string;
-    onPersistUpdate: (oldCode: string, newCode: string) => void;
     isStreaming?: boolean;
-    // FIX: Make setCodeForPreview optional to align with MarkdownRenderer and disable "Run" button when not provided.
-    setCodeForPreview?: (data: { code: string; language: string; onFix: (newCode: string) => void; } | null) => void;
+    setCodeForPreview?: (data: { code: string; language: string; } | null) => void;
 }
 
-const CodeBlock: React.FC<CodeBlockProps> = ({ language, code: initialCode, onPersistUpdate, isStreaming, setCodeForPreview }) => {
+const CodeBlock: React.FC<CodeBlockProps> = ({ language, code, isStreaming, setCodeForPreview }) => {
     const [isCopied, setIsCopied] = useState(false);
-    const [currentCode, setCurrentCode] = useState(initialCode);
     const codeRef = useRef<HTMLElement>(null);
-
-    useEffect(() => {
-        // If the parent's code changes (e.g., from a re-render), update the local state.
-        setCurrentCode(initialCode);
-    }, [initialCode]);
 
     useEffect(() => {
         // When streaming is finished, or code is updated, apply highlighting.
         if (codeRef.current && !isStreaming && typeof hljs !== 'undefined') {
             hljs.highlightElement(codeRef.current);
         }
-    }, [isStreaming, currentCode, language]);
+    }, [isStreaming, code, language]);
 
-    // FIX: Only show run button if setCodeForPreview is provided.
     const isRunnable = setCodeForPreview && ['html', 'htmlbars', 'javascript', 'css'].includes(language.toLowerCase());
 
     const handleCopy = async () => {
         try {
-            await navigator.clipboard.writeText(currentCode);
+            await navigator.clipboard.writeText(code);
             setIsCopied(true);
             setTimeout(() => setIsCopied(false), 2000);
         } catch (err) {
@@ -46,15 +36,9 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ language, code: initialCode, onPe
     };
     
     const handleRunClick = () => {
-        const onFix = (newCode: string) => {
-            setCurrentCode(newCode);
-            onPersistUpdate(initialCode, newCode);
-        };
-        // FIX: Use optional chaining in case setCodeForPreview is not provided.
         setCodeForPreview?.({
-            code: currentCode,
+            code: code,
             language: language,
-            onFix: onFix,
         });
     };
 
@@ -97,7 +81,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ language, code: initialCode, onPe
                 </div>
                 <pre className="p-4 text-sm whitespace-pre overflow-x-auto code-scrollbar">
                     <code ref={codeRef} className={`font-mono hljs language-${language}`}>
-                        {currentCode}
+                        {code}
                     </code>
                 </pre>
             </div>

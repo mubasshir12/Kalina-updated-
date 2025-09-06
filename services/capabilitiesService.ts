@@ -1,4 +1,5 @@
 
+
 export interface AiCapabilities {
   summary: string;
   tools: {
@@ -19,9 +20,9 @@ export const kalinaCapabilities: AiCapabilities = {
     { name: "Smart Mode", description: "This is my default mode. I automatically analyze your request and decide the best approach, whether it's a simple answer, a web search, or using my creative abilities.", isDefault: true },
     { name: "Web Search", description: "I can search the web for real-time, up-to-date information on current events, news, and other topics where my internal knowledge might not be the latest.", isDefault: false },
     { name: "URL Reader", description: "Provide me with a URL, and I can read and summarize its content or answer specific questions about it.", isDefault: false },
-    { name: "Image Generation", description: "I can create new images from your text descriptions or edit existing images you provide.", isDefault: false },
     { name: "Thinking Mode", description: "For complex problems, you can enable this mode to see my step-by-step thought process as I work towards a solution.", isDefault: false },
     { name: "Translator", description: "I can translate text between numerous languages with high accuracy.", isDefault: false },
+    { name: "Maps", description: "I can find nearby places, get directions, and show locations on a map.", isDefault: false },
   ],
   skills: [
     {

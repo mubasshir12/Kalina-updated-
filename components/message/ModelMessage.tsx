@@ -7,7 +7,6 @@ import MessageMetadata from './MessageMetadata';
 
 interface ModelMessageProps extends ChatMessageType {
     setModalImage: (url: string | null) => void;
-    setImageToDownload: (base64: string | null) => void;
     isStreaming?: boolean;
     isThinking?: boolean;
     isSearchingWeb?: boolean;
@@ -16,11 +15,11 @@ interface ModelMessageProps extends ChatMessageType {
     onUpdateMessageContent: (messageId: string, newContent: string) => void;
     isSpeaking?: boolean;
     onToggleAudio?: (id: string, text: string) => void;
-    setCodeForPreview: (data: { code: string; language: string; onFix: (newCode: string) => void; } | null) => void;
+    setCodeForPreview: (data: { code: string; language: string; } | null) => void;
 }
 
 const ModelMessage: React.FC<ModelMessageProps> = (props) => {
-    const showToolbar = !props.isStreaming && (props.content || (props.generatedImagesBase64 && props.generatedImagesBase64.length > 0));
+    const showToolbar = !props.isStreaming && props.content;
     const showMetadata = !props.isStreaming && (props.modelUsed || typeof props.inputTokens === 'number' || typeof props.outputTokens === 'number' || (props.generationTime && props.generationTime > 0));
 
     return (

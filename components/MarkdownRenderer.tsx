@@ -1,8 +1,9 @@
-
-
 import React from 'react';
-import { GroundingChunk } from '../types';
+import { GroundingChunk, Location, WeatherData, TimeData } from '../types';
 import CodeBlock from './CodeBlock';
+import InteractiveMap from './InteractiveMap';
+import WeatherCard from './WeatherCard';
+import TimeCard from './TimeCard';
 
 // Renders a single source citation as a clickable text-based tag.
 const Citation: React.FC<{ source: GroundingChunk; index: number }> = ({ source, index }) => {
@@ -32,6 +33,36 @@ const Citation: React.FC<{ source: GroundingChunk; index: number }> = ({ source,
         // Fallback for invalid URLs that throw an error in the URL constructor.
         return <sup className="text-xs font-semibold text-amber-500 dark:text-amber-400 mx-0.5" title={`Invalid URL: ${source.web.uri}`}>[{index + 1}]</sup>;
     }
+};
+
+const EmbeddedMap: React.FC<{ iframeHtml: string }> = ({ iframeHtml }) => {
+    const srcRegex = /src="([^"]+)"/;
+    const srcMatch = iframeHtml.match(srcRegex);
+    const src = srcMatch ? srcMatch[1] : '';
+
+    if (!src.startsWith('https://www.openstreetmap.org/export/embed.html')) {
+        return <div className="text-red-500 text-sm">[Error: Invalid map source]</div>;
+    }
+
+    const getAttribute = (attr: string) => {
+        const regex = new RegExp(`${attr}="([^"]+)"`);
+        const match = iframeHtml.match(regex);
+        return match ? match[1] : '';
+    };
+
+    return (
+        <div className="my-4 rounded-lg overflow-hidden border border-neutral-200 dark:border-gray-700 shadow-md">
+            <iframe
+                width={getAttribute('width') || '100%'}
+                height={getAttribute('height') || '350'}
+                src={src}
+                style={{ border: 'none', width: '100%' }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+            ></iframe>
+        </div>
+    );
 };
 
 
@@ -87,145 +118,182 @@ interface MarkdownRendererProps {
     sources?: GroundingChunk[];
     onContentUpdate: (newContent: string) => void;
     isStreaming?: boolean;
-    // FIX: Make setCodeForPreview optional to allow usage in components without a preview feature.
-    setCodeForPreview?: (data: { code: string; language: string; onFix: (newCode: string) => void; } | null) => void;
+    setCodeForPreview?: (data: { code: string; language: string; } | null) => void;
 }
 
 const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, sources, onContentUpdate, isStreaming, setCodeForPreview }) => {
-    const lines = content.split('\n');
-    const elements: React.ReactNode[] = [];
-    let currentList: { type: 'ul' | 'ol'; items: React.ReactNode[] } | null = null;
+    // Regex to split content by <MAP>, <MULTIMAP>, <WEATHER>, or <TIME> tags, keeping the content
+    const contentParts = content.split(/(<MAP>[\s\S]*?<\/MAP>|<MULTIMAP>[\s\S]*?<\/MULTIMAP>|<WEATHER>[\s\S]*?<\/WEATHER>|<TIME>[\s\S]*?<\/TIME>)/g);
     
-    let inCodeBlock = false;
-    let codeBlockContent: string[] = [];
-    let codeBlockLanguage = '';
-
-    const flushList = (key: string | number) => {
-        if (currentList) {
-            const ListTag = currentList.type;
-            const className = `${
-                ListTag === 'ul' ? 'list-disc' : 'list-decimal'
-            } list-inside space-y-1 my-3 pl-5`;
-            elements.push(
-                <ListTag key={key} className={className}>
-                    {currentList.items.map((item, i) => (
-                        <li key={i}>{item}</li>
-                    ))}
-                </ListTag>
-            );
-            currentList = null;
+    const elements: React.ReactNode[] = contentParts.flatMap((part, partIndex) => {
+        if (part.startsWith('<MAP>') && part.endsWith('</MAP>')) {
+            const iframeHtml = part.substring(5, part.length - 6);
+            return [<EmbeddedMap key={`map-${partIndex}`} iframeHtml={iframeHtml} />];
         }
-    };
 
-    const handlePersistCodeUpdate = (oldCode: string, newCode: string, language: string) => {
-        const oldCodeBlock = `\`\`\`${language}\n${oldCode}\n\`\`\``;
-        const newCodeBlock = `\`\`\`${language}\n${newCode}\n\`\`\``;
-        // A simple replace is generally safe as the same code block is unlikely to appear twice in one message.
-        // For more complex scenarios, a more robust replacement strategy would be needed.
-        onContentUpdate(content.replace(oldCodeBlock, newCodeBlock));
-    };
-
-    lines.forEach((line, index) => {
-        // Code blocks
-        if (line.trim().startsWith('```')) {
-            flushList(`list-before-code-${index}`);
-            if (inCodeBlock) {
-                const code = codeBlockContent.join('\n');
-                const lang = codeBlockLanguage;
-                elements.push(<CodeBlock 
-                    key={`code-${index}`} 
-                    language={lang} 
-                    code={code}
-                    onPersistUpdate={(old, newC) => handlePersistCodeUpdate(old, newC, lang)}
-                    isStreaming={isStreaming}
-                    setCodeForPreview={setCodeForPreview}
-                />);
-                inCodeBlock = false;
-                codeBlockContent = [];
-                codeBlockLanguage = '';
-            } else {
-                inCodeBlock = true;
-                codeBlockLanguage = line.trim().substring(3).trim();
+        if (part.startsWith('<MULTIMAP>') && part.endsWith('</MULTIMAP>')) {
+            const jsonString = part.substring(10, part.length - 11);
+            try {
+                const locations: Location[] = JSON.parse(jsonString);
+                return [<InteractiveMap key={`multimap-${partIndex}`} locations={locations} />];
+            } catch (e) {
+                console.error("Failed to parse MULTIMAP JSON:", e);
+                return [<div key={`multimap-error-${partIndex}`} className="text-red-500 text-sm">[Error: Could not render map data]</div>];
             }
-            return;
         }
+        
+        if (part.startsWith('<WEATHER>') && part.endsWith('</WEATHER>')) {
+            const jsonString = part.substring(9, part.length - 10);
+            try {
+                const weatherData: WeatherData = JSON.parse(jsonString);
+                return [<WeatherCard key={`weather-${partIndex}`} data={weatherData} />];
+            } catch (e) {
+                console.error("Failed to parse WEATHER JSON:", e);
+                return [<div key={`weather-error-${partIndex}`} className="text-red-500 text-sm">[Error: Could not render weather data]</div>];
+            }
+        }
+
+        if (part.startsWith('<TIME>') && part.endsWith('</TIME>')) {
+            const jsonString = part.substring(6, part.length - 7);
+            try {
+                const timeData: TimeData = JSON.parse(jsonString);
+                return [<TimeCard key={`time-${partIndex}`} data={timeData} />];
+            } catch (e) {
+                console.error("Failed to parse TIME JSON:", e);
+                return [<div key={`time-error-${partIndex}`} className="text-red-500 text-sm">[Error: Could not render time data]</div>];
+            }
+        }
+
+        const lines = part.split('\n');
+        // FIX: Changed type from React.ReactNode[] to the more specific JSX.Element[]
+        // This resolves a TypeScript error with flatMap's type inference, as this array only ever contains JSX elements.
+        const partElements: JSX.Element[] = [];
+        let currentList: { type: 'ul' | 'ol'; items: React.ReactNode[] } | null = null;
+        
+        let inCodeBlock = false;
+        let codeBlockContent: string[] = [];
+        let codeBlockLanguage = '';
+
+        const flushList = (key: string | number) => {
+            if (currentList) {
+                const ListTag = currentList.type;
+                const className = `${
+                    ListTag === 'ul' ? 'list-disc' : 'list-decimal'
+                } list-inside space-y-1 my-3 pl-5`;
+                partElements.push(
+                    <ListTag key={key} className={className}>
+                        {currentList.items.map((item, i) => (
+                            <li key={i}>{item}</li>
+                        ))}
+                    </ListTag>
+                );
+                currentList = null;
+            }
+        };
+
+        lines.forEach((line, index) => {
+            // Code blocks
+            if (line.trim().startsWith('```')) {
+                flushList(`list-before-code-${index}`);
+                if (inCodeBlock) {
+                    const code = codeBlockContent.join('\n');
+                    const lang = codeBlockLanguage;
+                    partElements.push(<CodeBlock 
+                        key={`code-${index}`} 
+                        language={lang} 
+                        code={code}
+                        isStreaming={isStreaming}
+                        setCodeForPreview={setCodeForPreview}
+                    />);
+                    inCodeBlock = false;
+                    codeBlockContent = [];
+                    codeBlockLanguage = '';
+                } else {
+                    inCodeBlock = true;
+                    codeBlockLanguage = line.trim().substring(3).trim();
+                }
+                return;
+            }
+
+            if (inCodeBlock) {
+                codeBlockContent.push(line);
+                return;
+            }
+
+            // Horizontal Rules
+            if (line.match(/^(---|___|\*\*\*)\s*$/)) {
+                flushList(`list-before-hr-${index}`);
+                partElements.push(<hr key={index} className="my-4 border-neutral-200 dark:border-gray-700" />);
+                return;
+            }
+            
+            // Headings (h1-h6)
+            const headingMatch = line.match(/^(#{1,6})\s+(.*)/);
+            if (headingMatch) {
+                flushList(`list-before-h-${index}`);
+                const level = headingMatch[1].length;
+                const Tag = `h${level}` as keyof JSX.IntrinsicElements;
+                const text = headingMatch[2];
+                const classNames = [
+                    "font-bold",
+                    level === 1 ? "text-2xl mt-5 mb-2" : "",
+                    level === 2 ? "text-xl mt-4 mb-1" : "",
+                    level === 3 ? "text-lg mt-3 mb-1" : "",
+                    level >= 4 ? "text-base mt-2 mb-1" : ""
+                ].join(" ");
+                partElements.push(<Tag key={index} className={classNames}>{parseInline(text, sources)}</Tag>);
+                return;
+            }
+            
+            // Unordered lists
+            const ulMatch = line.match(/^(\s*)(\*|-)\s+(.*)/);
+            if (ulMatch) {
+                if (currentList?.type !== 'ul') {
+                    flushList(`list-before-ul-${index}`);
+                    currentList = { type: 'ul', items: [] };
+                }
+                currentList.items.push(parseInline(ulMatch[3], sources));
+                return;
+            }
+
+            // Ordered lists
+            const olMatch = line.match(/^(\s*)(\d+)\.\s+(.*)/);
+            if (olMatch) {
+                if (currentList?.type !== 'ol') {
+                    flushList(`list-before-ol-${index}`);
+                    currentList = { type: 'ol', items: [] };
+                }
+                currentList.items.push(parseInline(olMatch[3], sources));
+                return;
+            }
+
+            // Paragraphs and empty lines
+            flushList(`list-before-p-${index}`);
+            if (line.trim() !== '') {
+                partElements.push(<p key={index}>{parseInline(line, sources)}</p>);
+            } else if (partElements.length > 0 && lines[index-1]?.trim() !== '') {
+                // Add a spacer for intentional line breaks, but not for multiple empty lines
+                partElements.push(<div key={`spacer-${index}`} className="h-1"></div>);
+            }
+        });
+
+        flushList('list-at-end');
 
         if (inCodeBlock) {
-            codeBlockContent.push(line);
-            return;
+            const code = codeBlockContent.join('\n');
+            const lang = codeBlockLanguage;
+            partElements.push(<CodeBlock 
+                key="code-at-end" 
+                language={lang} 
+                code={code}
+                isStreaming={isStreaming}
+                setCodeForPreview={setCodeForPreview}
+            />);
         }
 
-        // Horizontal Rules
-        if (line.match(/^(---|___|\*\*\*)\s*$/)) {
-            flushList(`list-before-hr-${index}`);
-            elements.push(<hr key={index} className="my-4 border-neutral-200 dark:border-gray-700" />);
-            return;
-        }
-        
-        // Headings (h1-h6)
-        const headingMatch = line.match(/^(#{1,6})\s+(.*)/);
-        if (headingMatch) {
-            flushList(`list-before-h-${index}`);
-            const level = headingMatch[1].length;
-            const Tag = `h${level}` as keyof JSX.IntrinsicElements;
-            const text = headingMatch[2];
-            const classNames = [
-                "font-bold",
-                level === 1 ? "text-2xl mt-5 mb-2" : "",
-                level === 2 ? "text-xl mt-4 mb-1" : "",
-                level === 3 ? "text-lg mt-3 mb-1" : "",
-                level >= 4 ? "text-base mt-2 mb-1" : ""
-            ].join(" ");
-            elements.push(<Tag key={index} className={classNames}>{parseInline(text, sources)}</Tag>);
-            return;
-        }
-        
-        // Unordered lists
-        const ulMatch = line.match(/^(\s*)(\*|-)\s+(.*)/);
-        if (ulMatch) {
-            if (currentList?.type !== 'ul') {
-                flushList(`list-before-ul-${index}`);
-                currentList = { type: 'ul', items: [] };
-            }
-            currentList.items.push(parseInline(ulMatch[3], sources));
-            return;
-        }
-
-        // Ordered lists
-        const olMatch = line.match(/^(\s*)(\d+)\.\s+(.*)/);
-        if (olMatch) {
-            if (currentList?.type !== 'ol') {
-                flushList(`list-before-ol-${index}`);
-                currentList = { type: 'ol', items: [] };
-            }
-            currentList.items.push(parseInline(olMatch[3], sources));
-            return;
-        }
-
-        // Paragraphs and empty lines
-        flushList(`list-before-p-${index}`);
-        if (line.trim() !== '') {
-            elements.push(<p key={index}>{parseInline(line, sources)}</p>);
-        } else if (elements.length > 0 && lines[index-1]?.trim() !== '') {
-            // Add a spacer for intentional line breaks, but not for multiple empty lines
-            elements.push(<div key={`spacer-${index}`} className="h-1"></div>);
-        }
+        return partElements;
     });
 
-    flushList('list-at-end');
-
-    if (inCodeBlock) {
-        const code = codeBlockContent.join('\n');
-        const lang = codeBlockLanguage;
-        elements.push(<CodeBlock 
-            key="code-at-end" 
-            language={lang} 
-            code={code}
-            onPersistUpdate={(old, newC) => handlePersistCodeUpdate(old, newC, lang)}
-            isStreaming={isStreaming}
-            setCodeForPreview={setCodeForPreview}
-        />);
-    }
 
     return <>{elements}</>;
 };

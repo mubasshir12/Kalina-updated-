@@ -16,11 +16,10 @@ interface ChatHistoryProps {
   onCancelStream: () => void;
   scrollContainerRef: React.RefObject<HTMLDivElement>;
   setModalImage: (url: string | null) => void;
-  setImageToDownload: (base64: string | null) => void;
-  setCodeForPreview: (data: { code: string; language: string; onFix: (newCode: string) => void; } | null) => void;
+  setCodeForPreview: (data: { code: string; language: string; } | null) => void;
 }
 
-const ChatHistory: React.FC<ChatHistoryProps> = ({ messages, isLoading, isThinking, isSearchingWeb, onRetry, onEditMessage, onUpdateMessageContent, speakingMessageId, onToggleAudio, onCancelStream, scrollContainerRef, setModalImage, setImageToDownload, setCodeForPreview }) => {
+const ChatHistory: React.FC<ChatHistoryProps> = ({ messages, isLoading, isThinking, isSearchingWeb, onRetry, onEditMessage, onUpdateMessageContent, speakingMessageId, onToggleAudio, onCancelStream, scrollContainerRef, setModalImage, setCodeForPreview }) => {
   const [isLockedToBottom, setIsLockedToBottom] = useState(true);
 
   // Effect to auto-scroll when new messages stream in, if the user is already at the bottom.
@@ -51,11 +50,11 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ messages, isLoading, isThinki
   }, [scrollContainerRef]);
 
   return (
-    <div className="space-y-6 pb-2">
+    <div className="space-y-4">
       {messages.map((msg, index) => {
         const isLastMessage = index === messages.length - 1;
-        const canRetry = isLastMessage && msg.role === 'model' && !isLoading && !isThinking && !msg.isGeneratingImage && !msg.isPlanning;
-        const isStreamingNow = isLoading && isLastMessage && !msg.isGeneratingImage && !msg.isPlanning && !msg.isEditingImage;
+        const canRetry = isLastMessage && msg.role === 'model' && !isLoading && !isThinking && !msg.isPlanning;
+        const isStreamingNow = isLoading && isLastMessage && !msg.isPlanning;
         
         return (
           <ChatMessage 
@@ -72,7 +71,6 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ messages, isLoading, isThinki
             onToggleAudio={onToggleAudio}
             onCancelStream={isStreamingNow ? onCancelStream : undefined}
             setModalImage={setModalImage}
-            setImageToDownload={setImageToDownload}
             setCodeForPreview={setCodeForPreview}
           />
         );

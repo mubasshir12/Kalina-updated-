@@ -1,18 +1,21 @@
 
 
+
+
 import React, { useState } from 'react';
-import { LayoutGrid } from 'lucide-react';
+import { LayoutGrid, History } from 'lucide-react';
 import { ConsoleMode } from '../types';
 import ThemeSelector from './ThemeSelector';
 import MenuSheet from './MenuSheet';
 
 interface HeaderProps {
-    onShowGallery: () => void;
     onShowMemory: () => void;
     onShowUsage: () => void;
     isChatView: boolean;
     consoleMode: ConsoleMode;
     setConsoleMode: (mode: ConsoleMode) => void;
+    onOpenHistory: () => void;
+    conversationCount: number;
 }
 
 const Header: React.FC<HeaderProps> = (props) => {
@@ -32,6 +35,19 @@ const Header: React.FC<HeaderProps> = (props) => {
               {props.isChatView && (
                   <>
                     <ThemeSelector />
+                     <button
+                        onClick={props.onOpenHistory}
+                        className="relative flex items-center justify-center h-10 w-10 text-neutral-600 dark:text-gray-300 hover:text-amber-600 dark:hover:text-amber-400 transition-colors focus:outline-none rounded-full"
+                        aria-label="Open chat history"
+                        title="History"
+                    >
+                        <History className="h-6 w-6" />
+                        {props.conversationCount > 0 && (
+                            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-600 text-white pointer-events-none text-[10px] font-medium">
+                                {props.conversationCount}
+                            </span>
+                        )}
+                    </button>
                     <button
                       onClick={() => setIsMenuSheetOpen(true)}
                       className="relative flex items-center justify-center h-10 w-10 text-neutral-600 dark:text-gray-300 hover:text-amber-600 dark:hover:text-amber-400 transition-colors focus:outline-none rounded-full"
@@ -49,7 +65,6 @@ const Header: React.FC<HeaderProps> = (props) => {
       <MenuSheet 
         isOpen={isMenuSheetOpen}
         onClose={() => setIsMenuSheetOpen(false)}
-        onShowGallery={props.onShowGallery}
         onShowMemory={props.onShowMemory}
         onShowUsage={props.onShowUsage}
         consoleMode={props.consoleMode}

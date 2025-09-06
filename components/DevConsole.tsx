@@ -5,6 +5,7 @@ import { getHintForError } from '../utils/errorHints';
 import { getAiHelpForError } from '../services/debugService';
 import { X, Trash2, Copy, Check, Info, Wand2, LoaderCircle, ChevronDown } from 'lucide-react';
 import MarkdownRenderer from './MarkdownRenderer';
+import { useDraggableSheet } from '../hooks/useDraggableSheet';
 
 interface DevConsoleProps {
     isOpen: boolean;
@@ -117,6 +118,8 @@ const LogEntryItem: React.FC<{ log: ConsoleLogEntry }> = ({ log }) => {
 const DevConsole: React.FC<DevConsoleProps> = ({ isOpen, onClose }) => {
     const { logs, clearLogs } = useDebug();
     const consoleBodyRef = useRef<HTMLDivElement>(null);
+    const sheetRef = useRef<HTMLDivElement>(null);
+    const { sheetStyle, handleRef } = useDraggableSheet(sheetRef, onClose, isOpen);
 
     useEffect(() => {
         if (logs.length > 0) {
@@ -124,17 +127,17 @@ const DevConsole: React.FC<DevConsoleProps> = ({ isOpen, onClose }) => {
         }
     }, [logs]);
     
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} aria-hidden="true">
+        <div className={`fixed inset-0 bg-black/50 z-40 transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={onClose} aria-hidden="true">
             <div
-                className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#1e1f22] rounded-t-2xl shadow-2xl transition-transform duration-300 ease-in-out translate-y-0 h-[60vh] flex flex-col"
+                ref={sheetRef}
+                className={`fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#1e1f22] rounded-t-2xl shadow-2xl transition-transform duration-300 ease-in-out ${isOpen ? '' : 'translate-y-full'} h-[60vh] flex flex-col`}
+                style={isOpen ? sheetStyle : {}}
                 role="dialog"
                 aria-modal="true"
                 onClick={(e) => e.stopPropagation()}
             >
-                <header className="p-4 border-b border-neutral-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
+                <header ref={handleRef} className="p-4 border-b border-neutral-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0 cursor-grab active:cursor-grabbing">
                     <h2 className="text-lg font-semibold text-neutral-800 dark:text-gray-200">Developer Console</h2>
                     <div className="flex items-center gap-2">
                         <button onClick={clearLogs} className="p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-gray-700 transition-colors" aria-label="Clear logs">

@@ -119,7 +119,7 @@ const TranslatorView: React.FC<TranslatorViewProps> = ({ onBack, onTranslationCo
     };
 
     return (
-        <main className="relative z-10 flex-1 flex flex-col overflow-hidden p-4 md:p-6">
+        <main className="relative z-10 flex-1 overflow-y-auto p-4 md:p-6">
             <div className="max-w-4xl mx-auto w-full flex flex-col">
                 <div className="flex items-center mb-6 flex-shrink-0">
                     <button onClick={onBack} className="p-2 rounded-full hover:bg-neutral-200 dark:hover:bg-gray-800 transition-colors mr-2 md:mr-4" aria-label="Back to chat">
@@ -128,16 +128,16 @@ const TranslatorView: React.FC<TranslatorViewProps> = ({ onBack, onTranslationCo
                     <h1 className="text-2xl md:text-3xl font-bold text-neutral-800 dark:text-gray-200">Translator</h1>
                 </div>
 
-                <div className="bg-white/80 dark:bg-[#1e1f22]/80 backdrop-blur-sm rounded-2xl shadow-lg border border-neutral-200 dark:border-gray-700 flex-1 flex flex-col overflow-hidden">
+                <div className="bg-white/80 dark:bg-[#1e1f22]/80 backdrop-blur-sm rounded-2xl shadow-lg border border-neutral-200 dark:border-gray-700 flex flex-col overflow-hidden">
                     {/* Source Text Area */}
-                    <div className="p-4 flex flex-col flex-1">
+                    <div className="p-4 flex flex-col">
                         <div className="relative flex-1 flex flex-col">
                             <textarea
                                 ref={textareaRef}
                                 value={inputText}
                                 onChange={(e) => setInputText(e.target.value)}
                                 placeholder="Enter text..."
-                                className="w-full flex-1 p-2 bg-transparent resize-none focus:outline-none text-neutral-800 dark:text-gray-200 text-lg leading-relaxed min-h-[150px] max-h-[40vh] scrollbar-hide"
+                                className="w-full flex-1 p-2 bg-transparent resize-none focus:outline-none text-neutral-800 dark:text-gray-200 text-lg leading-relaxed min-h-[100px] max-h-[40vh] scrollbar-hide"
                             />
                         </div>
                         <div className="pt-2 flex justify-between items-center text-xs text-neutral-500 dark:text-gray-400 font-mono">
@@ -169,8 +169,8 @@ const TranslatorView: React.FC<TranslatorViewProps> = ({ onBack, onTranslationCo
                     </div>
 
                     {/* Target Text Area */}
-                    <div className="p-4 flex flex-col flex-1 bg-neutral-50/50 dark:bg-gray-900/40">
-                        <div className="relative flex-1 min-h-[150px] flex flex-col">
+                    <div className="p-4 flex flex-col bg-neutral-50/50 dark:bg-gray-900/40">
+                        <div className="relative flex-1 min-h-[100px] flex flex-col">
                             {isLoading ? (
                                 <SkeletonLoader />
                             ) : outputText ? (

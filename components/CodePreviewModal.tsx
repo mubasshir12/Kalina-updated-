@@ -1,24 +1,46 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { X, AlertTriangle, Terminal, RefreshCw, Wand2, LoaderCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, AlertTriangle, Terminal, RotateCcw, ChevronDown, ChevronUp, Laptop, Tablet, Smartphone } from 'lucide-react';
 import { ConsoleLog } from '../types';
-import { autoFixCode } from '../services/codeService';
 
 interface CodePreviewModalProps {
-    initialCode: string;
+    code: string;
     language: string;
     onClose: () => void;
-    onCodeFixed: (newCode: string) => void;
 }
 
-const CodePreviewModal: React.FC<CodePreviewModalProps> = ({ initialCode, language, onClose, onCodeFixed }) => {
-    const [code, setCode] = useState(initialCode);
+type Viewport = 'desktop' | 'tablet' | 'mobile';
+
+const CodePreviewModal: React.FC<CodePreviewModalProps> = ({ code, language, onClose }) => {
     const [logs, setLogs] = useState<ConsoleLog[]>([]);
-    const [isFixing, setIsFixing] = useState(false);
-    const [fixerFeedback, setFixerFeedback] = useState<string[]>([]);
-    const [isConsoleOpen, setIsConsoleOpen] = useState(true);
+    const [isConsoleOpen, setIsConsoleOpen] = useState(false);
     const [iframeKey, setIframeKey] = useState(0);
+    const [view, setView] = useState<Viewport>('desktop');
     const consoleEndRef = useRef<HTMLDivElement>(null);
     
+    const errorCount = useMemo(() => logs.filter(log => log.level === 'error').length, [logs]);
+    const hasError = errorCount > 0;
+
+    useEffect(() => {
+        if (hasError) {
+            setIsConsoleOpen(true);
+        }
+    }, [hasError]);
+    
+    useEffect(() => {
+        const checkDevice = () => {
+            if (window.matchMedia("(min-width: 1024px)").matches) {
+                setView('desktop');
+            } else if (window.matchMedia("(min-width: 768px)").matches) {
+                setView('tablet');
+            } else {
+                setView('mobile');
+            }
+        };
+        checkDevice();
+        window.addEventListener('resize', checkDevice);
+        return () => window.removeEventListener('resize', checkDevice);
+    }, []);
+
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             const { type, level, message } = event.data;
@@ -37,36 +59,11 @@ const CodePreviewModal: React.FC<CodePreviewModalProps> = ({ initialCode, langua
 
     useEffect(() => {
         // Automatically scroll to the latest log message.
-        consoleEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [logs]);
-
-    const handleAutoFix = async () => {
-        const errorLog = logs.find(log => log.level === 'error');
-        if (!errorLog) return;
-
-        setIsFixing(true);
-        setIsConsoleOpen(true); // Keep console open to show progress.
-        setFixerFeedback([]);
-        setLogs(prev => [...prev, { level: 'log', message: `[AI Fixer] Starting to fix code...`, timestamp: new Date().toLocaleTimeString() }]);
-        
-        try {
-            const fixedCode = await autoFixCode(code, errorLog.message, (feedback) => {
-                setFixerFeedback(prev => [...prev, feedback]);
-                setLogs(prev => [...prev, { level: 'log', message: `[AI] ${feedback}`, timestamp: new Date().toLocaleTimeString() }]);
-            });
-            setCode(fixedCode);
-            onCodeFixed(fixedCode);
-            setLogs([{ level: 'log', message: '[AI Fixer] Code fixed successfully. Reloading preview.', timestamp: new Date().toLocaleTimeString() }]);
-            setIframeKey(Date.now()); // Automatically reload iframe with new code
-        } catch (error) {
-            console.error("Auto-fix failed:", error);
-            const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-            setLogs(prev => [...prev, { level: 'error', message: `[AI Fixer] Auto-fix failed: ${errorMessage}`, timestamp: new Date().toLocaleTimeString() }]);
-        } finally {
-            setIsFixing(false);
+        if (isConsoleOpen) {
+            consoleEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }
-    };
-
+    }, [logs, isConsoleOpen]);
+    
     const iframeContent = useMemo(() => {
         const headInject = language.toLowerCase() === 'css' ? `<style>${code}</style>` : '';
         let bodyInject = '';
@@ -110,10 +107,24 @@ const CodePreviewModal: React.FC<CodePreviewModalProps> = ({ initialCode, langua
                                         if (arg === undefined) return 'undefined';
                                         if (arg === null) return 'null';
                                         if (arg instanceof Error) return arg.stack || arg.toString();
+                                        if (arg instanceof HTMLElement) {
+                                            return \`HTMLElement <\${arg.tagName.toLowerCase()}>\`;
+                                        }
                                         if (typeof arg === 'object') {
-                                            // A simple serializer to avoid circular reference errors
+                                            const getCircularReplacer = () => {
+                                                const seen = new WeakSet();
+                                                return (key, value) => {
+                                                    if (typeof value === 'object' && value !== null) {
+                                                        if (seen.has(value)) {
+                                                            return '[Circular Reference]';
+                                                        }
+                                                        seen.add(value);
+                                                    }
+                                                    return value;
+                                                };
+                                            };
                                             try {
-                                                return JSON.stringify(arg, null, 2);
+                                                return JSON.stringify(arg, getCircularReplacer(), 2);
                                             } catch (e) {
                                                 return 'Unserializable Object';
                                             }
@@ -142,49 +153,63 @@ const CodePreviewModal: React.FC<CodePreviewModalProps> = ({ initialCode, langua
         `;
     }, [code, language]);
     
-    const errorCount = logs.filter(log => log.level === 'error').length;
-    const hasError = errorCount > 0;
+    const iframeDimensions: Record<Viewport, React.CSSProperties> = {
+        desktop: { width: '100%', height: '100%' },
+        tablet: { width: '768px', height: '1024px' },
+        mobile: { width: '375px', height: '667px' },
+    };
+
+    const viewportButtons: { id: Viewport; icon: React.ElementType }[] = [
+        { id: 'desktop', icon: Laptop },
+        { id: 'tablet', icon: Tablet },
+        { id: 'mobile', icon: Smartphone },
+    ];
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-[#1e1f22] rounded-2xl shadow-xl w-full max-w-4xl h-[90vh] flex flex-col" role="dialog" onClick={(e) => e.stopPropagation()}>
-                <header className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center flex-shrink-0">
-                    <div className="flex items-center gap-3">
-                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Live Preview</h2>
-                         {!isFixing && (
-                            <button onClick={() => { setIframeKey(Date.now()); setLogs([]); }} className="p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Refresh preview">
-                                <RefreshCw className="h-4 w-4" />
-                            </button>
-                        )}
-                        {hasError && !isFixing && <div className="flex items-center gap-1.5 ml-2 px-2 py-0.5 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 text-xs font-medium rounded-full">
+            <div className="bg-white dark:bg-[#1e1f22] rounded-2xl shadow-xl w-full max-w-6xl h-[90vh] flex flex-col" role="dialog" onClick={(e) => e.stopPropagation()}>
+                <header className="p-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center flex-shrink-0">
+                    <div className="flex items-center gap-2 sm:gap-4">
+                        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+                            {viewportButtons.map(({ id, icon: Icon }) => (
+                                <button
+                                    key={id}
+                                    onClick={() => setView(id)}
+                                    className={`p-1.5 rounded-md transition-colors ${view === id ? 'bg-white dark:bg-gray-700 text-amber-600 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-gray-700/50'}`}
+                                    aria-label={`Switch to ${id} view`}
+                                >
+                                    <Icon className="h-5 w-5" />
+                                </button>
+                            ))}
+                        </div>
+                        {hasError && <div className="hidden sm:flex items-center gap-1.5 ml-2 px-2 py-0.5 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 text-xs font-medium rounded-full">
                             <AlertTriangle className="h-3 w-3" />
                             <span>Error Detected</span>
                         </div>}
                     </div>
-                    <button onClick={onClose} className="p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Close">
-                        <X className="h-5 w-5" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => { setIframeKey(Date.now()); setLogs([]); }} className="p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Refresh preview">
+                            <RotateCcw className="h-5 w-5" />
+                        </button>
+                        <button onClick={onClose} className="p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Close">
+                            <X className="h-5 w-5" />
+                        </button>
+                    </div>
                 </header>
 
-                <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
-                    <div className="flex-1 p-2 bg-gray-100 dark:bg-gray-900">
-                        {isFixing ? (
-                            <div className="w-full h-full flex flex-col items-center justify-center bg-white dark:bg-[#1e1f22] rounded-lg">
-                                <LoaderCircle className="h-8 w-8 text-indigo-500 animate-spin" />
-                                <p className="mt-4 text-gray-600 dark:text-gray-400">AI is fixing the code...</p>
-                            </div>
-                        ) : (
-                            <iframe
-                                key={iframeKey}
-                                srcDoc={iframeContent}
-                                title="Code Preview"
-                                sandbox="allow-scripts allow-modals"
-                                className="w-full h-full border-0 rounded-lg bg-white"
-                            />
-                        )}
+                <main className="flex-1 flex flex-col overflow-hidden">
+                    <div className="flex-1 p-2 sm:p-4 bg-gray-100 dark:bg-gray-900 flex items-center justify-center overflow-auto">
+                        <iframe
+                            key={iframeKey}
+                            srcDoc={iframeContent}
+                            title="Code Preview"
+                            sandbox="allow-scripts allow-modals"
+                            className="border-0 bg-white shadow-lg transition-all duration-300 max-w-full max-h-full"
+                            style={iframeDimensions[view]}
+                        />
                     </div>
-                    <div className={`flex flex-col border-t md:border-t-0 md:border-l border-gray-200 dark:border-gray-700 transition-all duration-300 ${isConsoleOpen ? 'h-1/3 md:h-full md:w-1/3' : 'h-auto flex-shrink-0'}`}>
-                        <div className="flex-shrink-0 p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <div className="flex flex-col border-t border-gray-200 dark:border-gray-700 w-full flex-shrink-0">
+                        <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                             <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
                                 <Terminal className="h-4 w-4" />
                                 <span>Console</span>
@@ -194,20 +219,13 @@ const CodePreviewModal: React.FC<CodePreviewModalProps> = ({ initialCode, langua
                                     </span>
                                 )}
                             </div>
-                            <div className="flex items-center gap-2">
-                               {hasError && (
-                                    <button onClick={handleAutoFix} disabled={isFixing} className="flex items-center gap-1.5 px-2 py-1 text-xs font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors disabled:bg-indigo-400 disabled:cursor-not-allowed">
-                                        <Wand2 className="h-3.5 w-3.5" /> Auto-Fix
-                                    </button>
-                                )}
-                                <button onClick={() => setIsConsoleOpen(prev => !prev)} className="p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800" aria-label={isConsoleOpen ? 'Collapse console' : 'Expand console'}>
-                                    {isConsoleOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-                                </button>
-                            </div>
+                            <button onClick={() => setIsConsoleOpen(prev => !prev)} className="p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800" aria-label={isConsoleOpen ? 'Collapse console' : 'Expand console'}>
+                                {isConsoleOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                            </button>
                         </div>
 
                         {isConsoleOpen && (
-                            <div className="flex-1 p-2 overflow-y-auto text-xs font-mono bg-white dark:bg-[#131314]">
+                            <div className="h-48 p-2 overflow-y-auto text-xs font-mono bg-white dark:bg-[#131314]">
                                 {logs.length === 0 && <div className="text-gray-400 dark:text-gray-500 p-2">Console is empty.</div>}
                                 {logs.map((log, index) => (
                                     <div key={index} className={`p-1.5 border-b border-gray-100 dark:border-gray-800 ${log.level === 'error' ? 'text-red-600 dark:text-red-400' : log.level === 'warn' ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-700 dark:text-gray-300'}`}>

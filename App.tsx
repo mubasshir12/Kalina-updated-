@@ -1,10 +1,9 @@
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Suggestion, Tool, ChatModel, ModelInfo, View, ConsoleMode } from './types';
 import { initializeAiClient } from './services/aiClient';
 import Header from './components/Header';
 import ChatInput from './components/ChatInput';
-import ImageOptionsModal from './components/ImageOptionsModal';
 import ApiKeyModal from './components/ApiKeyModal';
 import ChatHistorySheet from './components/ChatHistorySheet';
 import ViewRenderer from './components/ViewRenderer';
@@ -13,7 +12,6 @@ import { useMemory } from './hooks/useMemory';
 import { useAudio } from './hooks/useAudio';
 import { useChatHandler } from './hooks/useChatHandler';
 import ConfirmationModal from './components/ConfirmationModal';
-import ImagePromptSuggestions from './components/ImagePromptSuggestions';
 import ModelSwitchModal from './components/ModelSwitchModal';
 import { codeKeywords } from './utils/codeKeywords';
 import { IS_DEV_CONSOLE_ENABLED } from './config';
@@ -24,6 +22,7 @@ import ParticleUniverse from './components/ParticleUniverse';
 import Globe from './components/Globe';
 import ImageModal from './components/ImageModal';
 import CodePreviewModal from './components/CodePreviewModal';
+import { useScrollSpy } from './hooks/useScrollSpy';
 
 const models: ModelInfo[] = [
     { id: 'gemini-2.5-flash', name: 'Kalina 2.5 Flash', description: 'Optimized for speed and efficiency.' },
@@ -35,18 +34,7 @@ const App: React.FC = () => {
     const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false);
     const [selectedTool, setSelectedTool] = useState<Tool>('smart');
     const [selectedChatModel, setSelectedChatModel] = useState<ChatModel>('gemini-2.5-flash');
-    const [isImageOptionsOpen, setIsImageOptionsOpen] = useState(false);
-    const [imageGenerationPrompt, setImageGenerationPrompt] = useState('');
     const [activeSuggestion, setActiveSuggestion] = useState<Suggestion | null>(null);
-    const [allGeneratedImages, setAllGeneratedImages] = useState<string[]>(() => {
-        try {
-            const storedImages = localStorage.getItem('kalina_generated_images');
-            return storedImages ? JSON.parse(storedImages) : [];
-        } catch (e) {
-            console.error("Failed to parse generated images from localStorage", e);
-            return [];
-        }
-    });
     const [currentView, setCurrentView] = useState<View>('chat');
     const [isHistorySheetOpen, setIsHistorySheetOpen] = useState(false);
     const [isStopConfirmOpen, setIsStopConfirmOpen] = useState(false);
@@ -65,8 +53,7 @@ const App: React.FC = () => {
     
     // State for modals lifted from child components
     const [modalImage, setModalImage] = useState<string | null>(null);
-    const [imageToDownload, setImageToDownload] = useState<string | null>(null);
-    const [codeForPreview, setCodeForPreview] = useState<{ code: string; language: string; onFix: (newCode: string) => void; } | null>(null);
+    const [codeForPreview, setCodeForPreview] = useState<{ code: string; language: string; } | null>(null);
 
     // Dev Console State
     const { logs } = useDebug();
@@ -88,7 +75,6 @@ const App: React.FC = () => {
         userProfile,
         selectedTool,
         selectedChatModel,
-        imageGenerationPrompt,
         updateConversation: conversationManager.updateConversation,
         updateConversationMessages: conversationManager.updateConversationMessages,
         setConversations: conversationManager.setConversations,
@@ -96,9 +82,6 @@ const App: React.FC = () => {
         setLtm,
         setCodeMemory,
         setUserProfile,
-        setAllGeneratedImages,
-        setIsImageOptionsOpen,
-        setImageGenerationPrompt,
         setActiveSuggestion
     });
 
@@ -106,6 +89,51 @@ const App: React.FC = () => {
     const { handleSendMessage, handleUpdateMessageContent, handleCancelStream, elapsedTime } = chatHandler;
 
     const showWelcomeScreen = !activeConversation || activeConversation.messages.length === 0;
+
+    const userMessageIndices = useMemo(() => {
+        if (!activeConversation) return [];
+        return activeConversation.messages.reduce((acc, msg, index) => {
+            if (msg.role === 'user') {
+                acc.push(index);
+            }
+            return acc;
+        }, [] as number[]);
+    }, [activeConversation]);
+
+    const activeMessageIndex = useScrollSpy(scrollContainerRef, userMessageIndices);
+
+    const handleNavigate = (direction: 'up' | 'down') => {
+        if (activeMessageIndex === null || userMessageIndices.length < 2) return;
+
+        const currentIndexInNavigator = userMessageIndices.indexOf(activeMessageIndex);
+        if (currentIndexInNavigator === -1) {
+            // If current index not found (e.g., scrolled to a model message), find the nearest user message to navigate from.
+            const nearestUserIndex = userMessageIndices.slice().reverse().find(i => i < (activeMessageIndex || 0));
+            if (nearestUserIndex !== undefined) {
+                const element = document.getElementById(`message-${nearestUserIndex}`);
+                element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            return;
+        };
+
+        let targetIndexInNavigator = -1;
+        if (direction === 'up') {
+            targetIndexInNavigator = currentIndexInNavigator - 1;
+        } else { // 'down'
+            targetIndexInNavigator = currentIndexInNavigator + 1;
+        }
+
+        if (targetIndexInNavigator >= 0 && targetIndexInNavigator < userMessageIndices.length) {
+            const targetMessageIndex = userMessageIndices[targetIndexInNavigator];
+            const element = document.getElementById(`message-${targetMessageIndex}`);
+            element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if (direction === 'down' && targetIndexInNavigator >= userMessageIndices.length) {
+            // If trying to navigate past the last message, just scroll to bottom.
+             if (scrollContainerRef.current) {
+                scrollContainerRef.current.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: 'smooth' });
+            }
+        }
+    };
     
     useEffect(() => {
         const observer = new MutationObserver(() => {
@@ -120,14 +148,6 @@ const App: React.FC = () => {
             setIsConsoleOpen(true);
         }
     }, [logs, consoleMode]);
-
-    useEffect(() => {
-        try {
-            localStorage.setItem('kalina_generated_images', JSON.stringify(allGeneratedImages));
-        } catch (e) {
-            console.error("Failed to save generated images to localStorage", e);
-        }
-    }, [allGeneratedImages]);
 
     useEffect(() => {
         try {
@@ -280,6 +300,12 @@ const App: React.FC = () => {
         setIsStopConfirmOpen(false);
     };
 
+    const handleRequestCancelStream = () => {
+        if (chatHandler.isLoading) {
+            setIsStopConfirmOpen(true);
+        }
+    };
+
     const handleToolChange = (tool: Tool) => {
         setSelectedTool(tool);
         if (tool === 'translator') {
@@ -298,18 +324,6 @@ const App: React.FC = () => {
         }));
     }, []);
     
-    const handleConfirmDownload = () => {
-        if (!imageToDownload) return;
-        const imageUrl = `data:image/png;base64,${imageToDownload}`;
-        const link = document.createElement('a');
-        link.href = imageUrl;
-        link.download = `kalina-ai-${Date.now()}.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setImageToDownload(null);
-    };
-
     const showConsoleToggleButton = consoleMode === 'manual' || (consoleMode === 'auto' && logs.length > 0);
 
     return (
@@ -320,12 +334,13 @@ const App: React.FC = () => {
                 </div>
 
                 <Header
-                    onShowGallery={() => setCurrentView('gallery')}
                     onShowMemory={() => setCurrentView('memory')}
                     onShowUsage={() => setCurrentView('usage')}
                     isChatView={currentView === 'chat'}
                     consoleMode={consoleMode}
                     setConsoleMode={setConsoleMode}
+                    onOpenHistory={() => setIsHistorySheetOpen(true)}
+                    conversationCount={conversationManager.conversations.length}
                 />
 
                 <ViewRenderer
@@ -337,7 +352,6 @@ const App: React.FC = () => {
                     isThinking={chatHandler.isThinking}
                     isSearchingWeb={chatHandler.isSearchingWeb}
                     speakingMessageId={speakingMessageId}
-                    allGeneratedImages={allGeneratedImages}
                     ltm={ltm}
                     translatorUsage={translatorUsage}
                     handleRetry={handleRetry}
@@ -347,7 +361,6 @@ const App: React.FC = () => {
                     handleSelectSuggestion={handleSelectSuggestion}
                     handleCancelStream={handleCancelStream}
                     setCurrentView={setCurrentView}
-                    setAllGeneratedImages={setAllGeneratedImages}
                     setLtm={setLtm}
                     scrollContainerRef={scrollContainerRef}
                     onCloseTranslator={() => {
@@ -356,14 +369,12 @@ const App: React.FC = () => {
                     }}
                     onTranslationComplete={handleTranslationComplete}
                     setModalImage={setModalImage}
-                    setImageToDownload={setImageToDownload}
                     setCodeForPreview={setCodeForPreview}
                 />
 
                 {currentView === 'chat' && (
-                    <div className="relative z-20 p-4 md:p-6 bg-white/5 dark:bg-black/5 backdrop-blur-sm border-t border-neutral-200/50 dark:border-white/10 rounded-tl-3xl rounded-tr-3xl">
+                    <div className="relative z-20 px-4 pb-4 pt-2 md:px-6 md:pb-6 md:pt-3 bg-white/5 dark:bg-black/5 backdrop-blur-sm border-t border-neutral-200/50 dark:border-white/10 rounded-tl-3xl rounded-tr-3xl">
                         <div className="max-w-4xl mx-auto relative">
-                            {selectedTool === 'imageGeneration' && <ImagePromptSuggestions onSelectPrompt={(p) => handleSendMessageWrapper(p)} />}
                             
                             <ChatInput
                                 onSendMessage={handleSendMessageWrapper}
@@ -373,14 +384,14 @@ const App: React.FC = () => {
                                 onToolChange={handleToolChange}
                                 activeSuggestion={activeSuggestion}
                                 onClearSuggestion={() => setActiveSuggestion(null)}
-                                onOpenHistory={() => setIsHistorySheetOpen(true)}
-                                conversationCount={conversationManager.conversations.length}
-                                onCancelStream={() => setIsStopConfirmOpen(true)}
+                                onCancelStream={handleRequestCancelStream}
                                 models={models}
                                 selectedChatModel={selectedChatModel}
                                 onSelectChatModel={setSelectedChatModel}
                                 apiKey={apiKey}
                                 onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
+                                showConversationJumper={!showWelcomeScreen && userMessageIndices.length > 1}
+                                onNavigate={handleNavigate}
                             />
                         </div>
                     </div>
@@ -421,12 +432,6 @@ const App: React.FC = () => {
                 currentApiKey={apiKey}
             />
 
-            <ImageOptionsModal
-                isOpen={isImageOptionsOpen}
-                onClose={() => setIsImageOptionsOpen(false)}
-                onGenerate={chatHandler.handleExecuteImageGeneration}
-                prompt={imageGenerationPrompt}
-            />
             <ChatHistorySheet
                 isOpen={isHistorySheetOpen}
                 onClose={() => setIsHistorySheetOpen(false)}
@@ -450,21 +455,11 @@ const App: React.FC = () => {
             
             {modalImage && <ImageModal imageUrl={modalImage} onClose={() => setModalImage(null)} />}
             
-            <ConfirmationModal
-                isOpen={imageToDownload !== null}
-                onClose={() => setImageToDownload(null)}
-                onConfirm={handleConfirmDownload}
-                title="Confirm Download"
-                message="Do you want to download this image?"
-                confirmButtonText="Download"
-            />
-
             {codeForPreview && (
                 <CodePreviewModal
-                    initialCode={codeForPreview.code}
+                    code={codeForPreview.code}
                     language={codeForPreview.language}
                     onClose={() => setCodeForPreview(null)}
-                    onCodeFixed={codeForPreview.onFix}
                 />
             )}
         </>

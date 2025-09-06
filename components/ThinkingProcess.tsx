@@ -7,9 +7,10 @@ interface ThinkingProcessProps {
     thoughts: ThoughtStep[];
     duration?: number;
     isThinking: boolean;
+    isStreaming?: boolean;
 }
 
-const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ thoughts, duration, isThinking }) => {
+const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ thoughts, duration, isThinking, isStreaming }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isFadingOut, setIsFadingOut] = useState(false);
     
@@ -62,8 +63,8 @@ const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ thoughts, duration, i
         );
     }
 
-    // After thinking is complete, only render the collapsible summary if there were thoughts.
-    if (!isThinking && safeThoughts.length > 0) {
+    // After thinking is complete AND streaming has finished, only render the collapsible summary if there were thoughts.
+    if (!isThinking && !isStreaming && safeThoughts.length > 0) {
         return (
              <details className="bg-neutral-100 dark:bg-gray-800/50 rounded-lg mb-4 border border-neutral-200 dark:border-gray-700 group">
                 <summary className="p-3 cursor-pointer text-sm font-medium text-neutral-700 dark:text-gray-300 flex items-center gap-2 hover:bg-neutral-200/60 dark:hover:bg-gray-700/50 rounded-t-lg transition-colors list-none [&::-webkit-details-marker]:hidden">
@@ -89,7 +90,7 @@ const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ thoughts, duration, i
         );
     }
     
-    return null; // Render nothing if there are no thoughts or not in a thinking state
+    return null; // Render nothing if thinking, streaming, or no thoughts
 };
 
 export default ThinkingProcess;

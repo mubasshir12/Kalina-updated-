@@ -4,7 +4,6 @@ export interface DeveloperProfile {
   location: string;
   role: string;
   appName: string;
-  project: string;
 }
 
 export const developerProfile: DeveloperProfile = {
@@ -13,6 +12,4 @@ export const developerProfile: DeveloperProfile = {
   location: "Mumbai, India",
   role: "the developer",
   appName: "Kalina AI",
-  project: "Ai Application"
-
 };

@@ -1,9 +1,8 @@
 import React from 'react';
 
 export type ChatModel = 'gemini-2.5-flash' | 'gemini-2.5-pro';
-export type ControlState = 'auto' | 'on' | 'off';
-export type Tool = 'smart' | 'webSearch' | 'thinking' | 'imageGeneration' | 'translator' | 'urlReader';
-export type View = 'chat' | 'gallery' | 'memory' | 'translator' | 'usage';
+export type Tool = 'smart' | 'webSearch' | 'thinking' | 'translator' | 'urlReader' | 'weather' | 'maps';
+export type View = 'chat' | 'memory' | 'translator' | 'usage';
 
 export type MessageRole = 'user' | 'model';
 
@@ -28,6 +27,32 @@ export interface ThoughtStep {
   concise_step: string;
 }
 
+export interface Location {
+  name: string;
+  details: string;
+  lat: number;
+  lon: number;
+}
+
+export interface TimeData {
+  time: string;
+  date: string;
+  timezone: string;
+}
+
+export interface WeatherData {
+  location: string;
+  temperature: number;
+  feels_like: number;
+  min_temp: number;
+  max_temp: number;
+  description: string;
+  humidity: number;
+  wind_speed: number;
+  icon: string;
+  id: number;
+}
+
 export interface ChatMessage {
   id: string;
   role: MessageRole;
@@ -49,15 +74,9 @@ export interface ChatMessage {
   thinkingDuration?: number;
   isAnalyzingImage?: boolean;
   isAnalyzingFile?: boolean;
-  isGeneratingImage?: boolean;
-  isEditingImage?: boolean;
-  generationComplete?: boolean;
-  generatedImagesBase64?: string[];
-  imageGenerationCount?: number;
-  aspectRatio?: "1:1" | "16:9" | "9:16" | "4:3" | "3:4" | number;
   isPlanning?: boolean;
-  isReadingUrl?: boolean;
-  isLongUrlRead?: boolean;
+  toolInUse?: 'url' | 'weather' | 'maps';
+  isLongToolUse?: boolean;
   memoryUpdated?: boolean;
   inputTokens?: number; // User prompt tokens
   outputTokens?: number; // Model response tokens

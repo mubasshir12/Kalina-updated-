@@ -1,18 +1,13 @@
-
-
-
-
 import React, { useState, useRef, useCallback } from 'react';
 import { Content, Part } from '@google/ai';
-import { ChatMessage as ChatMessageType, Suggestion, ChatModel, LTM, CodeSnippet, GroundingChunk, UserProfile } from '../types';
+import { ChatMessage as ChatMessageType, Suggestion, ChatModel, LTM, CodeSnippet, GroundingChunk, UserProfile, Tool } from '../types';
 import { initializeAiClient } from '../services/aiClient';
 import { startChatSession } from '../services/chatService';
 import { planResponse } from '../services/geminiService';
-import { generateImage, editImage } from '../services/imageService';
 import { updateMemory, summarizeConversation } from '../services/memoryService';
 import { processAndSaveCode, findRelevantCode } from '../services/codeService';
 import * as urlReaderService from '../services/urlReaderService';
-import { ImageGenerationOptions } from '../components/ImageOptionsModal';
+import { getWeather } from '../services/weatherService';
 import { getFriendlyErrorMessage } from '../utils/errorUtils';
 import { useDebug } from '../contexts/DebugContext';
 import { developerProfile } from '../services/developerProfile';
@@ -25,7 +20,7 @@ const models = [
 ];
 
 const transformMessagesToHistory = (msgs: ChatMessageType[]): Content[] => {
-      const validMessages = msgs.filter(m => !(m.role === 'model' && !m.content?.trim() && !m.image && !m.generatedImagesBase64));
+      const validMessages = msgs.filter(m => !(m.role === 'model' && !m.content?.trim() && !m.image));
       return validMessages.map(msg => {
           const parts: Part[] = [];
           if (msg.content) {
@@ -50,6 +45,40 @@ const estimateTokens = (text: string): number => {
     return Math.ceil(text.length / 4);
 };
 
+const getUserLocation = (): Promise<{ latitude: number, longitude: number }> => {
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            reject(new Error("Geolocation is not supported by this browser."));
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                resolve({
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                });
+            },
+            (error) => {
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        reject(new Error("User denied the request for Geolocation."));
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        reject(new Error("Location information is unavailable."));
+                        break;
+                    case error.TIMEOUT:
+                        reject(new Error("The request to get user location timed out."));
+                        break;
+                    default:
+                        reject(new Error("An unknown error occurred while getting location."));
+                        break;
+                }
+            }
+        );
+    });
+};
+
 
 export const useChatHandler = ({
     apiKey,
@@ -60,7 +89,6 @@ export const useChatHandler = ({
     userProfile,
     selectedTool,
     selectedChatModel,
-    imageGenerationPrompt,
     updateConversation,
     updateConversationMessages,
     setConversations,
@@ -68,15 +96,12 @@ export const useChatHandler = ({
     setLtm,
     setCodeMemory,
     setUserProfile,
-    setAllGeneratedImages,
-    setIsImageOptionsOpen,
-    setImageGenerationPrompt,
     setActiveSuggestion
 }) => {
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isThinking, setIsThinking] = useState<boolean>(false);
     const [isSearchingWeb, setIsSearchingWeb] = useState<boolean>(false);
-    const [isLongUrlRead, setIsLongUrlRead] = useState<boolean>(false);
+    const [isLongToolUse, setIsLongToolUse] = useState<boolean>(false);
     const [error, setError] = useState(null);
     const [elapsedTime, setElapsedTime] = useState(0);
 
@@ -112,75 +137,6 @@ export const useChatHandler = ({
         setIsSearchingWeb(false);
         setIsLoading(false);
     }, [clearThinkingIntervals, stopResponseTimer]);
-
-    const handleExecuteImageGeneration = useCallback(async (options: ImageGenerationOptions) => {
-        if (!apiKey || !activeConversationId) return;
-
-        const conversationForTitle = conversations.find(c => c.id === activeConversationId);
-        const shouldGenerateTitle = conversationForTitle?.messages.length === 0;
-
-        setIsImageOptionsOpen(false);
-        setIsLoading(true);
-        setError(null);
-
-        updateConversationMessages(activeConversationId, prev => [...prev, { id: crypto.randomUUID(), role: 'model', content: '', isGeneratingImage: true, imageGenerationCount: options.count, aspectRatio: options.aspectRatio }]);
-
-        try {
-            const { images: generatedImagesBase64 } = await generateImage(imageGenerationPrompt, options.count, options.aspectRatio);
-            setAllGeneratedImages(prev => [...prev, ...generatedImagesBase64]);
-
-            // Step 1: Update to show "Generated" text
-            updateConversationMessages(activeConversationId, prev => {
-                const newMessages = [...prev];
-                const lastMessageIndex = newMessages.length - 1;
-                newMessages[lastMessageIndex] = {
-                    ...newMessages[lastMessageIndex],
-                    isGeneratingImage: true,
-                    generationComplete: true,
-                    generatedImagesBase64: generatedImagesBase64,
-                };
-                return newMessages;
-            });
-
-            // Step 2: After a delay, switch to revealing the image
-            setTimeout(() => {
-                if (isCancelledRef.current) return;
-                updateConversationMessages(activeConversationId, prev => {
-                    const newMessages = [...prev];
-                    const lastMessageIndex = newMessages.length - 1;
-                    if (newMessages[lastMessageIndex]?.generationComplete) {
-                        newMessages[lastMessageIndex] = {
-                            ...newMessages[lastMessageIndex],
-                            isGeneratingImage: false,
-                        };
-                    }
-                    return newMessages;
-                });
-            }, 400);
-
-
-            if (shouldGenerateTitle) {
-                updateConversation(activeConversationId, c => ({ ...c, title: "Image Generation" }));
-            }
-        } catch (e: any) {
-            logError(e);
-            const friendlyError = getFriendlyErrorMessage(e);
-            setError(friendlyError);
-            updateConversationMessages(activeConversationId, prev => {
-                const newMessages = [...prev];
-                const lastMessageIndex = newMessages.length - 1;
-                newMessages[lastMessageIndex] = {
-                    ...newMessages[lastMessageIndex],
-                    isGeneratingImage: false,
-                    content: `Sorry, I encountered an error: ${friendlyError.message}`,
-                };
-                return newMessages;
-            });
-        } finally {
-            setIsLoading(false);
-            setImageGenerationPrompt('');
-        }
-    }, [apiKey, imageGenerationPrompt, activeConversationId, conversations, updateConversation, updateConversationMessages, setAllGeneratedImages, setIsImageOptionsOpen, setIsLoading, setError, logError]);
 
     const handleSendMessage = useCallback(async (prompt: string, image?: { base64: string; mimeType: string; }, file?: { base64: string; mimeType: string; name: string; size: number; }, overrideModel?: ChatModel, isRetry = false) => {
         const fullPrompt = prompt;
@@ -222,7 +178,7 @@ export const useChatHandler = ({
             updateConversationMessages(currentConversationId, prev => [...prev, planningMessage]);
         }
 
-        let longReadTimer: ReturnType<typeof setTimeout> | null = null;
+        let longToolUseTimer: ReturnType<typeof setTimeout> | null = null;
         let isImageAnalysisRequest = false;
         let isFileAnalysisRequest = false;
 
@@ -243,41 +199,25 @@ export const useChatHandler = ({
 
             let isThinkingEnabled = plan.needsThinking;
             let isWebSearchEnabled = plan.needsWebSearch;
-            let isImageGeneration = !image && plan.isImageGenerationRequest;
-            let isImageEdit = !!image && plan.isImageEditRequest;
-            let isUrlReadRequest = plan.isUrlReadRequest;
-            isImageAnalysisRequest = !!image && !isImageEdit && !isImageGeneration;
-            isFileAnalysisRequest = !!file;
             let finalPromptForModel = fullPrompt;
 
-            if (selectedTool === 'imageGeneration') {
-                isImageGeneration = !image;
-                isImageEdit = !!image;
-                isWebSearchEnabled = false;
-                isThinkingEnabled = false;
-                isUrlReadRequest = false;
-                isImageAnalysisRequest = false;
-            } else if (selectedTool === 'urlReader') {
-                isUrlReadRequest = true;
-                isWebSearchEnabled = false;
-                isThinkingEnabled = false;
-                isImageGeneration = false;
-                isImageEdit = false;
-                isImageAnalysisRequest = false;
-            } else if (selectedTool === 'thinking') {
-                isThinkingEnabled = true;
-                isWebSearchEnabled = false;
-                isImageGeneration = false;
-                isImageEdit = false;
-                isUrlReadRequest = false;
-            } else if (selectedTool === 'webSearch') {
-                isWebSearchEnabled = true;
-                isImageGeneration = false;
-                isImageEdit = false;
-                isThinkingEnabled = false;
-                isUrlReadRequest = false;
-                isImageAnalysisRequest = false;
+            // Manual tool selection overrides the planner
+            const toolOverrides: Partial<Record<Tool, () => void>> = {
+                'urlReader': () => { plan.isUrlReadRequest = true; isWebSearchEnabled = false; isThinkingEnabled = false; isImageAnalysisRequest = false; },
+                'thinking': () => { isThinkingEnabled = true; isWebSearchEnabled = false; plan.isUrlReadRequest = false; },
+                'webSearch': () => { isWebSearchEnabled = true; isThinkingEnabled = false; plan.isUrlReadRequest = false; isImageAnalysisRequest = false; },
+                'weather': () => { plan.isWeatherRequest = true; isWebSearchEnabled = false; isThinkingEnabled = false; },
+                'maps': () => { plan.isMapsRequest = true; plan.isNearbyRequest = true; isWebSearchEnabled = false; isThinkingEnabled = false; }
+            };
+            
+            if (toolOverrides[selectedTool]) {
+                toolOverrides[selectedTool]!();
             }
+            
+            isImageAnalysisRequest = !!image;
+            isFileAnalysisRequest = !!file;
+
+            let toolInUse: ChatMessageType['toolInUse'] = undefined;
 
             if (isImageAnalysisRequest) {
                 isThinkingEnabled = false;
@@ -293,123 +233,133 @@ export const useChatHandler = ({
                     prev.map(m => m.id === prev[prev.length - 2]?.id ? { ...m, isAnalyzingFile: true } : m)
                 );
             }
-
-            if (isUrlReadRequest) {
-                const urlMatch = fullPrompt.match(/(https?:\/\/[^\s]+)/);
-                if (!urlMatch) {
-                    updateConversationMessages(currentConversationId, prev => {
-                        const newMessages = [...prev];
-                        newMessages[newMessages.length - 1] = { ...newMessages[newMessages.length - 1], isPlanning: false, content: "It looks like you want me to read a URL, but I couldn't find one in your message. Please provide a valid URL." };
-                        return newMessages;
-                    });
-                    setIsLoading(false);
-                    stopResponseTimer();
-                    return;
-                }
-                const url = urlMatch[0];
-                
-                longReadTimer = setTimeout(() => {
-                    setIsLongUrlRead(true);
-                    updateConversationMessages(currentConversationId, prev => {
-                        const updated = [...prev];
-                        const last = updated[updated.length - 1];
-                        if (last?.role === 'model') {
-                            updated[updated.length - 1] = { ...last, isLongUrlRead: true };
-                        }
-                        return updated;
-                    });
-                }, 20000); // 20 seconds
-                
+            
+            const handleToolError = (errorMessage: string) => {
+                if (longToolUseTimer) clearTimeout(longToolUseTimer);
+                setIsLongToolUse(false);
                 updateConversationMessages(currentConversationId, prev => {
-                    const updated = [...prev];
-                    updated[updated.length - 1] = { ...updated[updated.length - 1], isPlanning: false, isReadingUrl: true };
-                    return updated;
+                    const newMessages = [...prev];
+                    const lastMsg = newMessages[newMessages.length - 1];
+                    newMessages[newMessages.length - 1] = { ...lastMsg, toolInUse: undefined, isPlanning: false, content: `Sorry, I couldn't use that tool. Error: ${errorMessage}` };
+                    return newMessages;
                 });
-
-                try {
-                    const cleanedContent = await urlReaderService.fetchAndParseUrlContent(url);
-                    finalPromptForModel = `[URL: ${url}]\n\n[EXTRACTED WEBPAGE CONTENT]:\n${cleanedContent}\n\n[USER QUESTION]:\n${fullPrompt}`;
-                    isWebSearchEnabled = false;
-                    isThinkingEnabled = false;
-
-                    updateConversationMessages(currentConversationId, prev => {
-                         const updated = [...prev];
-                         updated[updated.length - 1] = { ...updated[updated.length - 1], isReadingUrl: false };
-                         return updated;
-                    });
-                } catch (urlError: any) {
-                    if (longReadTimer) clearTimeout(longReadTimer);
-                    setIsLongUrlRead(false);
-                    updateConversationMessages(currentConversationId, prev => {
-                        const newMessages = [...prev];
-                        newMessages[newMessages.length - 1] = { ...newMessages[newMessages.length - 1], isReadingUrl: false, isPlanning: false, content: `Sorry, I couldn't read that URL. Error: ${urlError.message}` };
-                        return newMessages;
-                    });
-                    setIsLoading(false);
-                    stopResponseTimer();
-                    return;
-                }
-            }
-
-            if (isFirstTurnInConversation && isImageGeneration) {
-                updateConversation(currentConversationId, c => ({ ...c, title: "Image Generation" }));
-            }
-
-            if (isImageEdit && image) {
+                setIsLoading(false);
+                stopResponseTimer();
+            };
+            
+            longToolUseTimer = setTimeout(() => {
+                setIsLongToolUse(true);
                 updateConversationMessages(currentConversationId, prev => {
                     const updated = [...prev];
-                    updated[updated.length - 1] = { ...updated[updated.length - 1], isPlanning: false, isEditingImage: true, imageGenerationCount: 1 };
-                    return updated;
-                });
-
-                const result = await editImage(fullPrompt, image);
-
-                updateConversationMessages(currentConversationId, prev => {
-                    const updated = [...prev];
-                    const lastMessage = updated[updated.length - 1];
-                    if (lastMessage?.isEditingImage) {
-                        updated[updated.length - 1] = {
-                            ...lastMessage,
-                            isEditingImage: true,
-                            generationComplete: true,
-                            content: result.textResponse,
-                            generatedImagesBase64: result.editedImageBase64 ? [result.editedImageBase64] : undefined,
-                            inputTokens: result.usageMetadata?.promptTokenCount,
-                            outputTokens: result.usageMetadata?.candidatesTokenCount
-                        };
+                    const last = updated[updated.length - 1];
+                    if (last?.role === 'model') {
+                        updated[updated.length - 1] = { ...last, isLongToolUse: true };
                     }
                     return updated;
                 });
+            }, 20000); // 20 seconds for any tool
 
-                if (result.editedImageBase64) setAllGeneratedImages(prev => [...prev, result.editedImageBase64!]);
+            const toolContexts: string[] = [];
+            const toolPromises: Promise<void>[] = [];
 
-                setTimeout(() => {
-                    if (isCancelledRef.current) return;
-                    updateConversationMessages(currentConversationId, prev => {
-                        const updated = [...prev];
-                        const lastMessage = updated[updated.length - 1];
-                        if (lastMessage?.generationComplete) {
-                            updated[updated.length - 1] = {
-                                ...lastMessage,
-                                isEditingImage: false,
-                            };
-                        }
-                        return updated;
-                    });
-                }, 400);
+            // URL Reader is a special case that rewrites the prompt and is mutually exclusive.
+            if (plan.isUrlReadRequest) {
+                toolInUse = 'url';
+                const urlMatch = fullPrompt.match(/(https?:\/\/[^\s]+)/);
+                if (!urlMatch) {
+                    return handleToolError("No valid URL found in your message.");
+                }
+                updateConversationMessages(currentConversationId, prev => prev.map((m, i) => i === prev.length - 1 ? { ...m, isPlanning: false, toolInUse } : m));
+                try {
+                    const cleanedContent = await urlReaderService.fetchAndParseUrlContent(urlMatch[0]);
+                    finalPromptForModel = `[URL: ${urlMatch[0]}]\n\n[EXTRACTED WEBPAGE CONTENT]:\n${cleanedContent}\n\n[USER QUESTION]:\n${fullPrompt}`;
+                } catch (urlError: any) {
+                    return handleToolError(urlError.message);
+                }
+            } else {
+                // Handle other tools which can be combined.
+                let locationForTools = plan.location;
 
-                return;
-            } else if (isImageGeneration) {
-                updateConversationMessages(currentConversationId, prev => prev.slice(0, -1));
-                setImageGenerationPrompt(fullPrompt);
-                setIsImageOptionsOpen(true);
-                return;
+                // Time Request
+                if (plan.isTimeRequest) {
+                    toolContexts.push('[TASK]: You must generate the current time data.');
+                }
+
+                // Weather Request
+                if (plan.isWeatherRequest) {
+                    toolInUse = toolInUse || 'weather';
+                    const fetchWeather = (loc: string) => getWeather(loc)
+                        .then(weatherData => {
+                            const weatherJsonString = JSON.stringify(weatherData);
+                            toolContexts.push(`[WEATHER DATA for ${weatherData.location}]:\n${weatherJsonString}`);
+                            if (!locationForTools) locationForTools = weatherData.location; // Save location for other tools
+                        })
+                        .catch(err => {
+                            toolContexts.push(`[WEATHER TOOL ERROR]: ${err.message}`);
+                        });
+
+                    if (locationForTools) {
+                        toolPromises.push(fetchWeather(locationForTools));
+                    } else {
+                        // Attempt to get user's location as a fallback
+                        toolPromises.push(
+                            getUserLocation()
+                                .then(coords => fetchWeather(`lat=${coords.latitude}&lon=${coords.longitude}`))
+                                .catch(err => {
+                                    toolContexts.push(`[WEATHER TOOL ERROR]: Could not get weather data. I need a location, and I was unable to get your current location. Error: ${err.message}`);
+                                })
+                        );
+                    }
+                }
+                
+                // Nearby Places Request
+                if (plan.isNearbyRequest) {
+                    toolInUse = toolInUse || 'maps';
+                    toolPromises.push(
+                        getUserLocation()
+                            .then(({ latitude, longitude }) => {
+                                toolContexts.push(`[NEARBY SEARCH CONTEXT]: The user is at latitude ${latitude} and longitude ${longitude}. They want to find nearby "${plan.nearbyQuery || fullPrompt}".`);
+                            })
+                            .catch(err => {
+                                logError(err);
+                                toolContexts.push(`[NEARBY SEARCH ERROR]: The user wants to find nearby "${plan.nearbyQuery || fullPrompt}", but their precise location is unavailable. You should ask them to provide a city or address to search in.`);
+                            })
+                    );
+                }
+
+                // Single Map Request
+                if (plan.isMapsRequest && !plan.isNearbyRequest) {
+                    toolInUse = toolInUse || 'maps';
+                    toolContexts.push(`[MAPS TASK]: The user's map-related query is: "${plan.mapQuery || fullPrompt}". Answer it helpfully. If displaying a map is the best response, you MUST generate and include a valid iframe embed code from openstreetmap.org and wrap it in <MAP> tags.`);
+                }
+                
+                if (toolInUse) {
+                     updateConversationMessages(currentConversationId, prev => prev.map((m, i) => i === prev.length - 1 ? { ...m, isPlanning: false, toolInUse } : m));
+                }
+                
+                // Wait for all data fetching tools to finish
+                await Promise.all(toolPromises);
+
+                // If any tools were used, construct the final composite prompt
+                if (toolContexts.length > 0) {
+                    let instruction = `Based on the user's prompt and the provided context/data below, formulate a comprehensive and conversational response. You must address all parts of the user's query.`;
+                    
+                    if (toolContexts.some(c => c.includes('[WEATHER DATA'))) instruction += `\n- After your text response about the weather, you MUST include the original weather data as a valid JSON object, wrapped in <WEATHER> tags.`;
+                    if (toolContexts.some(c => c.includes('[TASK]: Generate the current time data'))) instruction += `\n- For the time request, you MUST generate the current time data as a valid JSON object and wrap it in <TIME> tags.`;
+                    if (toolContexts.some(c => c.includes('[NEARBY SEARCH CONTEXT]'))) instruction += `\n- For the nearby search, summarize the places you found conversationally. Then, provide the map data as a valid JSON array of all results, wrapped in <MULTIMAP> tags. Each result must contain "name", "details", "lat", and "lon".`;
+                    if (toolContexts.some(c => c.includes('[MAPS TASK]'))) instruction += `\n- For the map display task, if a map is appropriate, you MUST generate and include a valid iframe embed code from openstreetmap.org and wrap it in <MAP> tags.`;
+
+                    instruction += `\n\nYour final, complete response must contain both the conversational text and all required data tags.`;
+                    
+                    finalPromptForModel = `${instruction}\n\n[USER PROMPT]:\n"${fullPrompt}"\n\n[CONTEXT & DATA]:\n${toolContexts.join('\n\n')}`;
+                }
             }
-            
+
+
             updateConversationMessages(currentConversationId, prev => {
                 const newMessages = [...prev];
-                if (newMessages[newMessages.length - 1]?.isPlanning) {
-                    newMessages[newMessages.length - 1] = { ...newMessages[newMessages.length - 1], isPlanning: false, thoughts: plan.thoughts };
+                if (newMessages[newMessages.length - 1]?.isPlanning || newMessages[newMessages.length - 1]?.toolInUse) {
+                    newMessages[newMessages.length - 1] = { ...newMessages[newMessages.length - 1], isPlanning: false, toolInUse: undefined, thoughts: plan.thoughts };
                 }
                 return newMessages;
             });
@@ -469,10 +419,23 @@ export const useChatHandler = ({
             
             const stream = await chat.sendMessageStream({ message: parts });
             
+            // As soon as the stream starts, clear pre-computation states.
+            if (longToolUseTimer) {
+                clearTimeout(longToolUseTimer);
+                setIsLongToolUse(false);
+            }
+            if (isThinkingEnabled) clearThinkingIntervals();
+            if (isWebSearchEnabled) setIsSearchingWeb(false);
+            if (isImageAnalysisRequest) {
+                updateConversationMessages(currentConversationId, prev => prev.map(m => m.isAnalyzingImage ? { ...m, isAnalyzingImage: false } : m));
+            }
+            if (isFileAnalysisRequest) {
+                updateConversationMessages(currentConversationId, prev => prev.map(m => m.isAnalyzingFile ? { ...m, isAnalyzingFile: false } : m));
+            }
+
             let finalModelResponse = '';
             let titleExtracted = false;
             let usageMetadata: { promptTokenCount?: number; candidatesTokenCount?: number; } | undefined = undefined;
-            let thinkingCleared = false;
 
             for await (const chunk of stream) {
                 if (isCancelledRef.current) {
@@ -490,34 +453,27 @@ export const useChatHandler = ({
                     });
                     break;
                 }
-                
-                if (!thinkingCleared && chunk.text) {
-                    if (isThinking) {
-                        clearThinkingIntervals();
-                    }
-                    if (isSearchingWeb) {
-                        setIsSearchingWeb(false);
-                    }
-                    if (longReadTimer) {
-                        clearTimeout(longReadTimer);
-                        setIsLongUrlRead(false);
-                    }
-                    thinkingCleared = true;
-                }
 
                 if (chunk.usageMetadata) usageMetadata = chunk.usageMetadata;
                 finalModelResponse += chunk.text;
                 
                 let displayContent = finalModelResponse;
                 if (isFirstTurnInConversation) {
-                    const titleMatch = displayContent.match(/^\s*TITLE:\s*([^\n]+)/);
-                    if (titleMatch && titleMatch[1] && !titleExtracted) {
-                        updateConversation(currentConversationId, c => ({ ...c, title: titleMatch[1].trim(), isGeneratingTitle: false }));
-                        titleExtracted = true;
-                    } else if (displayContent.length > 50 && !displayContent.includes('TITLE:')) {
-                        if(!titleExtracted) updateConversation(currentConversationId, c => ({ ...c, isGeneratingTitle: false }));
-                        titleExtracted = true;
+                    if (!titleExtracted) {
+                        const titleMatch = displayContent.match(/^\s*TITLE:\s*([^\n]+)/);
+                        if (titleMatch && titleMatch[1]) {
+                            const currentTitle = titleMatch[1].trim();
+                            updateConversation(currentConversationId, c => ({ ...c, title: currentTitle, isGeneratingTitle: false }));
+
+                            if (displayContent.includes('\n')) {
+                                titleExtracted = true;
+                            }
+                        } else if (displayContent.length > 50 && !displayContent.startsWith('TITLE:')) {
+                            updateConversation(currentConversationId, c => ({ ...c, isGeneratingTitle: false }));
+                            titleExtracted = true;
+                        }
                     }
+                    
                     displayContent = displayContent.replace(/^\s*TITLE:\s*[^\n]*\n?/, '');
                 }
 
@@ -527,7 +483,7 @@ export const useChatHandler = ({
                     const lastMessage = prevMessages[prevMessages.length - 1];
                     if (lastMessage?.role === 'model') {
                         const updatedMessages = [...prevMessages];
-                        updatedMessages[prevMessages.length - 1] = { ...lastMessage, content: displayContent, sources, isPlanning: false, isGeneratingImage: false };
+                        updatedMessages[prevMessages.length - 1] = { ...lastMessage, content: displayContent, sources, isPlanning: false };
                         return updatedMessages;
                     }
                     // This case handles adding the very first model message chunk
@@ -545,7 +501,7 @@ export const useChatHandler = ({
 
                         // If a tool that adds significant content to the prompt was used (image, url, search), show the total prompt tokens to reflect the tool's cost.
                         // Otherwise (for normal chat or creator requests), only show the user's text tokens to hide history/system prompt cost.
-                        const toolUsed = isUrlReadRequest || isImageAnalysisRequest || isFileAnalysisRequest || isWebSearchEnabled;
+                        const toolUsed = toolInUse || isImageAnalysisRequest || isFileAnalysisRequest || isWebSearchEnabled || toolContexts.length > 0;
                         const displayInputTokens = toolUsed ? totalPromptTokens : userTextTokens;
                         const systemTokens = toolUsed ? 0 : totalPromptTokens - userTextTokens;
 
@@ -629,39 +585,25 @@ export const useChatHandler = ({
                 if (prev.length === 0) return prev;
                 const newMessages = [...prev];
                 const lastMessage = newMessages[newMessages.length - 1];
-                newMessages[newMessages.length - 1] = { ...lastMessage, isPlanning: false, isGeneratingImage: false, isEditingImage: false, isReadingUrl: false, content: `Sorry, I encountered an error: ${friendlyError.message}` };
+                newMessages[newMessages.length - 1] = { ...lastMessage, isPlanning: false, toolInUse: undefined, content: `Sorry, I encountered an error: ${friendlyError.message}` };
                 if (lastMessage.role === 'user') {
                     newMessages.push({ id: crypto.randomUUID(), role: 'model', content: `Sorry, I encountered an error: ${friendlyError.message}` });
                 }
                 return newMessages;
             });
         } finally {
-            if (longReadTimer) clearTimeout(longReadTimer);
-            setIsLongUrlRead(false);
+            if (longToolUseTimer) clearTimeout(longToolUseTimer);
+            setIsLongToolUse(false);
             
-            // Turn off image analysis animation on the user's message
-            if (isImageAnalysisRequest) {
-                 updateConversationMessages(currentConversationId, prev =>
+            // Robustly clear any lingering analysis flags
+            if (currentConversationId) {
+                updateConversationMessages(currentConversationId, prev =>
                     prev.map(m => {
-                        if (m.isAnalyzingImage) {
-                            const { isAnalyzingImage, ...rest } = m;
-                            return rest;
-                        }
-                        return m;
+                        const { isAnalyzingImage, isAnalyzingFile, ...rest } = m;
+                        return rest;
                     })
                 );
             }
-            if (isFileAnalysisRequest) {
-                updateConversationMessages(currentConversationId, prev =>
-                   prev.map(m => {
-                       if (m.isAnalyzingFile) {
-                           const { isAnalyzingFile, ...rest } = m;
-                           return rest;
-                       }
-                       return m;
-                   })
-               );
-           }
 
             const finalElapsedTime = Date.now() - responseStartTimeRef.current;
             stopResponseTimer();
@@ -688,8 +630,7 @@ export const useChatHandler = ({
     }, [
         apiKey, isLoading, activeConversationId, conversations, selectedChatModel, selectedTool, ltm, codeMemory, userProfile,
         setConversations, setActiveConversationId, setError, setIsLoading, updateConversationMessages, 
-        updateConversation, setAllGeneratedImages, setImageGenerationPrompt, setIsImageOptionsOpen, 
-        setIsThinking, setIsSearchingWeb, setCodeMemory, setLtm, setUserProfile, setActiveSuggestion, clearThinkingIntervals, stopResponseTimer, logError
+        updateConversation, setCodeMemory, setLtm, setUserProfile, setActiveSuggestion, clearThinkingIntervals, stopResponseTimer, logError
     ]);
 
     const handleUpdateMessageContent = (messageId: string, newContent: string) => {
@@ -713,7 +654,6 @@ export const useChatHandler = ({
         setIsSearchingWeb,
         clearThinkingIntervals,
         handleSendMessage,
-        handleExecuteImageGeneration,
         handleUpdateMessageContent,
         handleCancelStream,
     };

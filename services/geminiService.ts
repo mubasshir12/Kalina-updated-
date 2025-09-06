@@ -1,9 +1,9 @@
-
-
 import { Part, Type } from "@google/genai";
 import { getAiClient } from "./aiClient";
 
-const planAndThinkSystemInstruction = `You are an AI planner. Analyze the user's prompt to determine the best response strategy by classifying it. Your primary goal is to distinguish between web search, URL read, complex, simple, and image-related prompts.
+const planAndThinkSystemInstruction = `You are an AI planner. Analyze the user's prompt to determine the best response strategy by classifying it. A single prompt can trigger multiple tools; set all relevant boolean flags to true.
+
+**Example:** For "what's the time and the weather in Paris?", you must set both 'isTimeRequest' and 'isWeatherRequest' to true, and set 'location' to 'Paris'.
 
 **1. Web Search (needsWebSearch: true):**
 Set to true for queries needing real-time or up-to-date info (news, events, live data).
@@ -18,14 +18,23 @@ Set to true if the user asks who created you, your developer, or your origin.
 **4. Capabilities Inquiry (isCapabilitiesRequest: true):**
 Set to true if the user asks what you can do, about your tools, or your abilities (e.g., "what are your skills?", "can you generate images?").
 
-**5. Image & File Analysis:**
-- **Image Edit (isImageEditRequest: true):** Set if the user provides an image and asks to modify it.
-- **File Analysis:** If a file is attached, always set 'needsThinking' to true.
+**5. Time Inquiry (isTimeRequest: true):**
+Set to true for queries about the current time or date.
 
-**6. Complex Prompts (needsThinking: true):**
+**6. Weather Inquiry (isWeatherRequest: true):**
+Set to true for queries about weather conditions. Extract the primary location into 'location'.
+
+**7. Maps & Nearby Inquiries:**
+- **Single Location/Directions (isMapsRequest: true):** Set to true for queries about distances, directions, or a *single specific location* (e.g., "distance to Eiffel Tower", "map of London"). Extract the core question into 'mapQuery'.
+- **Nearby Places (isNearbyRequest: true):** Set to true for queries about *multiple, non-specific places* near a location (e.g., "cafes near me", "parks around here"). Extract the type of place into 'nearbyQuery'.
+
+**8. File Analysis:**
+- If a file is attached, always set 'needsThinking' to true.
+
+**9. Complex Prompts (needsThinking: true):**
 Set to true for prompts requiring analysis, creativity, multi-step reasoning, coding, or file analysis.
 
-**7. Simple Prompts (needsThinking: false):**
+**10. Simple Prompts (needsThinking: false):**
 Set to false for basic conversational turns.
 
 **Output:**
@@ -36,10 +45,15 @@ Respond ONLY with a valid JSON object based on the prompt analysis.
 - \`isUrlReadRequest\` (boolean): URL found and needs to be analyzed.
 - \`isCreatorRequest\` (boolean): User is asking about the developer.
 - \`isCapabilitiesRequest\` (boolean): User is asking about your abilities.
+- \`isTimeRequest\` (boolean, optional): User is asking about the current time.
+- \`isWeatherRequest\` (boolean, optional): User is asking about the weather.
+- \`location\` (string, optional): The location for the weather query.
+- \`isMapsRequest\` (boolean, optional): User is asking a map-related question.
+- \`mapQuery\` (string, optional): The core map-related query from the user.
+- \`isNearbyRequest\` (boolean, optional): User is asking for nearby places.
+- \`nearbyQuery\` (string, optional): The type of place to search for nearby.
 - \`needsThinking\` (boolean): Complex task.
 - \`needsCodeContext\` (boolean): Prompt relates to previous code.
-- \`isImageGenerationRequest\` (boolean): User asks to create a new image.
-- \`isImageEditRequest\` (boolean): User provides an image and asks to modify it.
 - \`thoughts\` (array, optional): If 'needsThinking' is true, provide a step-by-step plan.
 - \`searchPlan\` (array, optional): If 'needsWebSearch' is true, provide a research plan.
 
@@ -56,10 +70,15 @@ export interface ResponsePlan {
     isUrlReadRequest: boolean;
     isCreatorRequest: boolean;
     isCapabilitiesRequest: boolean;
+    isTimeRequest?: boolean;
+    isWeatherRequest?: boolean;
+    location?: string;
+    isMapsRequest?: boolean;
+    mapQuery?: string;
+    isNearbyRequest?: boolean;
+    nearbyQuery?: string;
     needsThinking: boolean;
     needsCodeContext: boolean;
-    isImageGenerationRequest: boolean;
-    isImageEditRequest: boolean;
     thoughts: ThoughtStep[];
     searchPlan?: ThoughtStep[];
 }
@@ -88,10 +107,15 @@ export const planResponse = async (prompt: string, image?: { base64: string; mim
                         isUrlReadRequest: { type: Type.BOOLEAN },
                         isCreatorRequest: { type: Type.BOOLEAN },
                         isCapabilitiesRequest: { type: Type.BOOLEAN },
+                        isTimeRequest: { type: Type.BOOLEAN },
+                        isWeatherRequest: { type: Type.BOOLEAN },
+                        location: { type: Type.STRING },
+                        isMapsRequest: { type: Type.BOOLEAN },
+                        mapQuery: { type: Type.STRING },
+                        isNearbyRequest: { type: Type.BOOLEAN },
+                        nearbyQuery: { type: Type.STRING },
                         needsThinking: { type: Type.BOOLEAN },
                         needsCodeContext: { type: Type.BOOLEAN },
-                        isImageGenerationRequest: { type: Type.BOOLEAN },
-                        isImageEditRequest: { type: Type.BOOLEAN },
                         thoughts: {
                             type: Type.ARRAY,
                             items: {
@@ -117,15 +141,15 @@ export const planResponse = async (prompt: string, image?: { base64: string; mim
                             }
                         }
                     },
-                    required: ["needsWebSearch", "isUrlReadRequest", "isCreatorRequest", "isCapabilitiesRequest", "needsThinking", "isImageGenerationRequest", "isImageEditRequest", "needsCodeContext"],
+                    required: ["needsWebSearch", "isUrlReadRequest", "isCreatorRequest", "isCapabilitiesRequest", "needsThinking", "needsCodeContext"],
                 }
             }
         });
         const jsonText = response.text.trim();
         const result = JSON.parse(jsonText);
 
-        // If web search or URL read is needed, disable thinking to go straight to the task.
-        if (result.needsWebSearch || result.isUrlReadRequest) {
+        // If a tool-based request is made, disable general thinking to go straight to the task.
+        if (result.needsWebSearch || result.isUrlReadRequest || result.isTimeRequest || result.isWeatherRequest || result.isMapsRequest || result.isNearbyRequest) {
             result.needsThinking = false;
             result.thoughts = [];
         }
@@ -143,8 +167,6 @@ export const planResponse = async (prompt: string, image?: { base64: string; mim
             isCapabilitiesRequest: false,
             needsThinking: !needsWebSearch, // Ensures thinking is false if web search is true
             needsCodeContext: false, // <-- Changed from true to false for token efficiency on error
-            isImageGenerationRequest: !image && (prompt.toLowerCase().includes('generate') || prompt.toLowerCase().includes('create')),
-            isImageEditRequest: !!image,
             thoughts: [], // No thoughts when thinking is disabled
             searchPlan: []
         };

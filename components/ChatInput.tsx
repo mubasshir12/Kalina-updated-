@@ -1,6 +1,6 @@
 import React, { useState, KeyboardEvent, useRef, ChangeEvent, useEffect } from 'react';
 import { Suggestion, Tool, ChatModel, ModelInfo } from '../types';
-import { Sparkles, ChevronDown, X, Paperclip, ArrowUp, Globe, BrainCircuit, Image, History, Expand, File, Presentation, FileText, Camera, Languages, Link, ClipboardPaste } from 'lucide-react';
+import { Sparkles, ChevronDown, X, Paperclip, ArrowUp, Globe, BrainCircuit, Image, Expand, File, Presentation, FileText, Camera, Languages, Link, ClipboardPaste, ChevronUp, CloudSun, Map } from 'lucide-react';
 import ImageModal from './ImageModal';
 import ModelSelector from './ModelSelector';
 
@@ -12,22 +12,23 @@ interface ChatInputProps {
   onToolChange: (tool: Tool) => void;
   activeSuggestion: Suggestion | null;
   onClearSuggestion: () => void;
-  onOpenHistory: () => void;
-  conversationCount: number;
   onCancelStream: () => void;
   models: ModelInfo[];
   selectedChatModel: ChatModel;
   onSelectChatModel: (model: ChatModel) => void;
   apiKey: string | null;
   onOpenApiKeyModal: () => void;
+  showConversationJumper: boolean;
+  onNavigate: (direction: 'up' | 'down') => void;
 }
 
 const tools: { id: Tool; name: string; description: string; icon: React.ElementType }[] = [
     { id: 'smart', name: 'Smart Mode', description: 'Automatically uses the best tool for the job.', icon: Sparkles },
     { id: 'webSearch', name: 'Web Search', description: 'Searches the web for real-time info.', icon: Globe },
     { id: 'urlReader', name: 'URL Reader', description: 'Reads content from a web page URL.', icon: Link },
+    { id: 'weather', name: 'Weather', description: 'Gets real-time weather information.', icon: CloudSun },
+    { id: 'maps', name: 'Maps', description: 'Provides location, distance, and map info.', icon: Map },
     { id: 'thinking', name: 'Thinking', description: 'Shows the AI\'s step-by-step thought process.', icon: BrainCircuit },
-    { id: 'imageGeneration', name: 'Image Generation', description: 'Creates or edits an image from a prompt.', icon: Image },
     { id: 'translator', name: 'Translator', description: 'Translates text between languages.', icon: Languages },
 ];
 
@@ -52,14 +53,14 @@ const ChatInput: React.FC<ChatInputProps> = ({
     onToolChange,
     activeSuggestion,
     onClearSuggestion,
-    onOpenHistory,
-    conversationCount,
     onCancelStream,
     models,
     selectedChatModel,
     onSelectChatModel,
     apiKey,
-    onOpenApiKeyModal
+    onOpenApiKeyModal,
+    showConversationJumper,
+    onNavigate,
 }) => {
   const [input, setInput] = useState('');
   const [urlInput, setUrlInput] = useState('');
@@ -88,14 +89,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
         textareaRef.current.style.height = `${scrollHeight}px`; // Set to new scroll height
     }
   }, [input]);
-
-  useEffect(() => {
-    // Set initial height correctly on mount, respecting the min-height class.
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-    }
-  }, []); // Run on mount
 
   useEffect(() => {
     if (activeSuggestion) {
@@ -211,9 +204,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const SelectedIcon = selectedToolObject.icon;
   
   const placeholderText = () => {
-      if (selectedTool === 'imageGeneration') {
-          return image ? "Describe the edits you want to make..." : "Enter a prompt to generate an image...";
-      }
       if (selectedTool === 'urlReader') {
           return "Ask a question about the URL above...";
       }
@@ -259,53 +249,71 @@ const ChatInput: React.FC<ChatInputProps> = ({
           <input ref={imageInputRef} type="file" accept="image/png, image/jpeg, image/webp" onChange={handleFileChange} className="hidden" />
           <input ref={fileInputRef} type="file" accept="application/pdf, text/plain" onChange={handleFileChange} className="hidden" />
           
-          <div className="flex items-stretch justify-between px-1 gap-2">
-              <div className="relative" ref={toolsMenuRef}>
-                   <button 
-                      onClick={() => setIsToolsOpen(!isToolsOpen)}
-                      className="flex items-center gap-3 px-3 py-2 text-neutral-700 dark:text-gray-300 bg-neutral-100 dark:bg-[#2E2F33] border border-neutral-300 dark:border-gray-600 rounded-xl hover:bg-neutral-200 dark:hover:bg-gray-700/70 transition-colors h-full"
-                   >
-                      <SelectedIcon className="h-5 w-5 text-amber-500 dark:text-amber-400 flex-shrink-0" />
-                       <div className="text-left">
-                          <p className="text-sm font-medium leading-none">{selectedToolObject.name}</p>
-                           <p className="text-xs text-neutral-500 dark:text-gray-400">{selectedToolObject.description}</p>
-                      </div>
-                      <ChevronDown className={`w-4 h-4 transition-transform ${isToolsOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                  {isToolsOpen && (
-                      <div className="absolute bottom-full mb-2 w-72 bg-white dark:bg-[#2E2F33] border border-neutral-200 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden z-20">
-                         {tools.map(tool => {
-                             const ToolIcon = tool.icon;
-                             return (
-                                 <button 
-                                      key={tool.id}
-                                      onClick={() => { onToolChange(tool.id); setIsToolsOpen(false); }}
-                                      className="w-full text-left p-3 text-neutral-800 dark:text-gray-200 hover:bg-neutral-100 dark:hover:bg-gray-700/70 transition-colors flex items-center gap-3"
-                                 >
-                                      <ToolIcon className="h-5 w-5 text-neutral-500 dark:text-gray-400 flex-shrink-0" />
-                                      <div>
-                                          <p className="font-semibold text-sm">{tool.name}</p>
-                                          <p className="text-xs text-neutral-500 dark:text-gray-400">{tool.description}</p>
-                                      </div>
-                                 </button>
-                             )
-                          })}
-                      </div>
-                  )}
-              </div>
-              <div className="relative">
-                <button
-                  onClick={onOpenHistory}
-                  className="p-3 bg-neutral-100 dark:bg-[#2E2F33] border border-neutral-300 dark:border-gray-600 rounded-xl text-neutral-700 dark:text-gray-300 hover:bg-neutral-200 dark:hover:bg-gray-700/70 transition-colors h-full"
-                  aria-label="Open chat history"
-                  title="History"
-                >
-                    <History className="h-5 w-5" />
-                </button>
-                {conversationCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-600 text-white pointer-events-none text-xs font-medium">
-                        {conversationCount}
-                    </span>
+          <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-2">
+                <div className="relative" ref={toolsMenuRef}>
+                    <button 
+                        onClick={() => setIsToolsOpen(!isToolsOpen)}
+                        className="flex items-center gap-2 px-3 py-1.5 text-neutral-700 dark:text-gray-300 bg-neutral-100 dark:bg-[#2E2F33] border border-neutral-300 dark:border-gray-600 rounded-xl hover:bg-neutral-200 dark:hover:bg-gray-700/70 transition-colors"
+                    >
+                        <SelectedIcon className="h-5 w-5 text-amber-500 dark:text-amber-400 flex-shrink-0" />
+                        <span className={`font-medium leading-none transition-all duration-200 ${showConversationJumper ? 'text-xs' : 'text-sm'}`}>{selectedToolObject.name}</span>
+                        <ChevronDown className={`w-4 h-4 transition-transform ${isToolsOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {isToolsOpen && (
+                        <div className="absolute bottom-full mb-2 w-72 bg-white dark:bg-[#2E2F33] border border-neutral-200 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden z-20">
+                            {tools.map(tool => {
+                                const ToolIcon = tool.icon;
+                                return (
+                                    <button 
+                                        key={tool.id}
+                                        onClick={() => { onToolChange(tool.id); setIsToolsOpen(false); }}
+                                        className="w-full text-left p-3 text-neutral-800 dark:text-gray-200 hover:bg-neutral-100 dark:hover:bg-gray-700/70 transition-colors flex items-center gap-3"
+                                    >
+                                        <ToolIcon className="h-5 w-5 text-neutral-500 dark:text-gray-400 flex-shrink-0" />
+                                        <div>
+                                            <p className="font-semibold text-sm">{tool.name}</p>
+                                            <p className="text-xs text-neutral-500 dark:text-gray-400">{tool.description}</p>
+                                        </div>
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    )}
+                </div>
+                 <ModelSelector
+                    models={models}
+                    selectedChatModel={selectedChatModel}
+                    onSelectChatModel={onSelectChatModel}
+                    apiKey={apiKey}
+                    onOpenApiKeyModal={onOpenApiKeyModal}
+                    isJumperVisible={showConversationJumper}
+                />
+                 {showConversationJumper && (
+                    <>
+                        <button
+                            onClick={() => {
+                                if ('vibrate' in navigator) navigator.vibrate(20);
+                                onNavigate('up');
+                            }}
+                            disabled={isLoading}
+                            className="flex items-center justify-center w-10 h-10 text-neutral-700 dark:text-gray-300 bg-neutral-100 dark:bg-[#2E2F33] border border-neutral-300 dark:border-gray-600 rounded-full hover:bg-neutral-200 dark:hover:bg-gray-700/70 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            aria-label="Jump to previous message"
+                        >
+                            <ChevronUp className="h-5 w-5" />
+                        </button>
+                        <button
+                            onClick={() => {
+                                if ('vibrate' in navigator) navigator.vibrate(20);
+                                onNavigate('down');
+                            }}
+                            disabled={isLoading}
+                            className="flex items-center justify-center w-10 h-10 text-neutral-700 dark:text-gray-300 bg-neutral-100 dark:bg-[#2E2F33] border border-neutral-300 dark:border-gray-600 rounded-full hover:bg-neutral-200 dark:hover:bg-gray-700/70 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            aria-label="Jump to next message"
+                        >
+                            <ChevronDown className="h-5 w-5" />
+                        </button>
+                    </>
                 )}
               </div>
           </div>
@@ -367,28 +375,30 @@ const ChatInput: React.FC<ChatInputProps> = ({
             <div className="flex justify-between items-end mt-2">
                 <div className="flex items-end">
                     {!(image || file) ? (
-                        <div ref={attachmentMenuRef} className="relative">
-                            <button
-                                onClick={() => setIsAttachmentMenuOpen(prev => !prev)}
-                                disabled={isLoading}
-                                className="flex items-center justify-center w-10 h-10 p-2 rounded-full text-neutral-600 dark:text-gray-300 hover:bg-neutral-300/50 dark:hover:bg-gray-700/70 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                aria-label="Attach file"
-                            >
-                                <Paperclip className="h-6 w-6" />
-                            </button>
-                            {isAttachmentMenuOpen && (
-                              <div className="absolute bottom-full mb-2 w-48 bg-white dark:bg-[#2E2F33] border border-neutral-200 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden">
-                                  <button onClick={() => handleTriggerInput(cameraInputRef)} className="w-full flex items-center gap-3 p-2.5 text-sm text-neutral-700 dark:text-gray-300 hover:bg-neutral-100 dark:hover:bg-gray-700/70 transition-colors">
-                                      <Camera className="w-4 h-4" /> Take Photo
-                                  </button>
-                                  <button onClick={() => handleTriggerInput(imageInputRef)} className="w-full flex items-center gap-3 p-2.5 text-sm text-neutral-700 dark:text-gray-300 hover:bg-neutral-100 dark:hover:bg-gray-700/70 transition-colors">
-                                      <Image className="w-4 h-4" /> Upload Image
-                                  </button>
-                                  <button onClick={() => handleTriggerInput(fileInputRef)} className="w-full flex items-center gap-3 p-2.5 text-sm text-neutral-700 dark:text-gray-300 hover:bg-neutral-100 dark:hover:bg-gray-700/70 transition-colors">
-                                      <File className="w-4 h-4" /> Upload File
-                                  </button>
-                              </div>
-                            )}
+                        <div className="flex items-center">
+                            <div ref={attachmentMenuRef} className="relative">
+                                <button
+                                    onClick={() => setIsAttachmentMenuOpen(prev => !prev)}
+                                    disabled={isLoading}
+                                    className="flex items-center justify-center w-10 h-10 p-2 rounded-full text-neutral-600 dark:text-gray-300 hover:bg-neutral-300/50 dark:hover:bg-gray-700/70 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    aria-label="Attach file"
+                                >
+                                    <Paperclip className="h-6 w-6" />
+                                </button>
+                                {isAttachmentMenuOpen && (
+                                  <div className="absolute bottom-full mb-2 w-48 bg-white dark:bg-[#2E2F33] border border-neutral-200 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden">
+                                      <button onClick={() => handleTriggerInput(cameraInputRef)} className="w-full flex items-center gap-3 p-2.5 text-sm text-neutral-700 dark:text-gray-300 hover:bg-neutral-100 dark:hover:bg-gray-700/70 transition-colors">
+                                          <Camera className="w-4 h-4" /> Take Photo
+                                      </button>
+                                      <button onClick={() => handleTriggerInput(imageInputRef)} className="w-full flex items-center gap-3 p-2.5 text-sm text-neutral-700 dark:text-gray-300 hover:bg-neutral-100 dark:hover:bg-gray-700/70 transition-colors">
+                                          <Image className="w-4 h-4" /> Upload Image
+                                      </button>
+                                      <button onClick={() => handleTriggerInput(fileInputRef)} className="w-full flex items-center gap-3 p-2.5 text-sm text-neutral-700 dark:text-gray-300 hover:bg-neutral-100 dark:hover:bg-gray-700/70 transition-colors">
+                                          <File className="w-4 h-4" /> Upload File
+                                      </button>
+                                  </div>
+                                )}
+                            </div>
                         </div>
                     ) : (
                         <div className="flex items-center gap-2">
@@ -437,14 +447,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
                         </div>
                     )}
                 </div>
-
-                <ModelSelector
-                    models={models}
-                    selectedChatModel={selectedChatModel}
-                    onSelectChatModel={onSelectChatModel}
-                    apiKey={apiKey}
-                    onOpenApiKeyModal={onOpenApiKeyModal}
-                />
 
                 <button
                     onClick={isLoading ? onCancelStream : handleSend}

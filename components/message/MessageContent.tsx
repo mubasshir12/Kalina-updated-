@@ -1,13 +1,10 @@
-
 import React from 'react';
 import { ChatMessage as ChatMessageType } from '../../types';
 import MarkdownRenderer from '../MarkdownRenderer';
 import ThinkingProcess from '../ThinkingProcess';
 import WebSearchAnimation from '../WebSearchAnimation';
-import UrlReaderAnimation from '../UrlReaderAnimation';
-import GeneratedImage from '../GeneratedImage';
+import ToolUsageAnimation from '../ToolUsageAnimation';
 import { Brain } from 'lucide-react';
-import ImageGenerationAnimation from '../ImageGenerationAnimation';
 
 const SkeletonLoader: React.FC = () => (
     <div className="space-y-3 py-2">
@@ -24,27 +21,13 @@ const MemoryUpdateNotification: React.FC = () => (
     </div>
 );
 
-const ImageGenerationLoader: React.FC<{ count: number; aspectRatio?: "1:1" | "16:9" | "9:16" | "4:3" | "3:4" | number; isEditing?: boolean; generationComplete?: boolean; }> = ({ count = 1, aspectRatio = "1:1", isEditing = false, generationComplete = false }) => {
-    return (
-        <div className="flex flex-col gap-3">
-            <div className="grid grid-cols-2 gap-2 max-w-[420px]">
-              {Array.from({ length: count }).map((_, index) => (
-                  <ImageGenerationAnimation key={index} aspectRatio={aspectRatio} isEditing={isEditing && count === 1} generationComplete={generationComplete} />
-              ))}
-            </div>
-        </div>
-    );
-};
-
-
 interface MessageContentProps extends ChatMessageType {
     setModalImage: (url: string | null) => void;
-    setImageToDownload: (base64: string | null) => void;
     isStreaming?: boolean;
     isThinking?: boolean;
     isSearchingWeb?: boolean;
     onUpdateMessageContent: (messageId: string, newContent: string) => void;
-    setCodeForPreview: (data: { code: string; language: string; onFix: (newCode: string) => void; } | null) => void;
+    setCodeForPreview: (data: { code: string; language: string; } | null) => void;
 }
 
 const MessageContent: React.FC<MessageContentProps> = ({
@@ -53,14 +36,8 @@ const MessageContent: React.FC<MessageContentProps> = ({
     isStreaming,
     isThinking,
     isSearchingWeb,
-    isReadingUrl,
-    isLongUrlRead,
-    isGeneratingImage,
-    isEditingImage,
-    generationComplete,
-    generatedImagesBase64,
-    imageGenerationCount,
-    aspectRatio,
+    toolInUse,
+    isLongToolUse,
     isPlanning,
     sources,
     thoughts,
@@ -69,12 +46,9 @@ const MessageContent: React.FC<MessageContentProps> = ({
     memoryUpdated,
     onUpdateMessageContent,
     setModalImage,
-    setImageToDownload,
     setCodeForPreview,
 }) => {
     const showThinkingProcess = isThinking || (thoughts && thoughts.length > 0);
-    const showImageLoader = isGeneratingImage || isEditingImage;
-    const showFinalImages = generatedImagesBase64 && generatedImagesBase64.length > 0 && !showImageLoader;
 
     return (
         <>
@@ -100,38 +74,23 @@ const MessageContent: React.FC<MessageContentProps> = ({
 
             {isPlanning && <SkeletonLoader />}
             
-            {!isPlanning && isReadingUrl && <UrlReaderAnimation isLongUrlRead={isLongUrlRead} />}
+            {!isPlanning && toolInUse && <ToolUsageAnimation toolInUse={toolInUse} isLongToolUse={isLongToolUse} />}
 
-            {!isPlanning && !isReadingUrl && showThinkingProcess && (
+            {!isPlanning && !toolInUse && showThinkingProcess && (
                 <ThinkingProcess 
                     thoughts={thoughts || []} 
                     duration={thinkingDuration} 
-                    isThinking={!!isThinking} 
+                    isThinking={!!isThinking}
+                    isStreaming={isStreaming}
                 />
             )}
 
-            {!isPlanning && !isReadingUrl && !showThinkingProcess && showImageLoader && <ImageGenerationLoader count={imageGenerationCount || 1} aspectRatio={aspectRatio} isEditing={isEditingImage} generationComplete={generationComplete} />}
-            
-            {!isPlanning && !isReadingUrl && !showThinkingProcess && !showImageLoader && isStreaming && !content && (!generatedImagesBase64 || generatedImagesBase64.length === 0) && (
+            {!isPlanning && !toolInUse && !showThinkingProcess && isStreaming && !content && (
                 isSearchingWeb ? <div className="flex justify-center items-center"><WebSearchAnimation plan={searchPlan} /></div> : <SkeletonLoader />
             )}
             
             <div className="text-neutral-800 dark:text-gray-200 leading-relaxed">
             
-            {showFinalImages && (
-                <div className="mb-2 grid grid-cols-2 gap-2 max-w-[420px]">
-                    {generatedImagesBase64.map((base64, index) => (
-                        <GeneratedImage 
-                            key={index} 
-                            index={index}
-                            base64={base64} 
-                            onExpandClick={setModalImage}
-                            onDownloadClick={setImageToDownload}
-                        />
-                    ))}
-                </div>
-            )}
-
             {content ? <MarkdownRenderer content={content} sources={sources} onContentUpdate={(newContent) => onUpdateMessageContent(id, newContent)} isStreaming={!!isStreaming} setCodeForPreview={setCodeForPreview} /> : null}
             
             {isStreaming && content ? <span className="inline-block w-2 h-4 bg-neutral-800 dark:bg-white animate-pulse ml-1" /> : null}

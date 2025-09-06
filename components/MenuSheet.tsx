@@ -1,12 +1,12 @@
-import React from 'react';
-import { Image as GalleryIcon, BrainCircuit, BarChart3, Terminal } from 'lucide-react';
+import React, { useRef } from 'react';
+import { BrainCircuit, BarChart3, Terminal } from 'lucide-react';
 import { ConsoleMode } from '../types';
 import { IS_DEV_CONSOLE_ENABLED } from '../config';
+import { useDraggableSheet } from '../hooks/useDraggableSheet';
 
 interface MenuSheetProps {
     isOpen: boolean;
     onClose: () => void;
-    onShowGallery: () => void;
     onShowMemory: () => void;
     onShowUsage: () => void;
     consoleMode: ConsoleMode;
@@ -16,12 +16,13 @@ interface MenuSheetProps {
 const MenuSheet: React.FC<MenuSheetProps> = ({
     isOpen,
     onClose,
-    onShowGallery,
     onShowMemory,
     onShowUsage,
     consoleMode,
     setConsoleMode
 }) => {
+    const sheetRef = useRef<HTMLDivElement>(null);
+    const { sheetStyle, handleRef } = useDraggableSheet(sheetRef, onClose, isOpen);
 
     const handleLinkClick = (action: () => void) => {
         action();
@@ -36,12 +37,16 @@ const MenuSheet: React.FC<MenuSheetProps> = ({
                 aria-hidden="true"
             />
             <div
-                className={`fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#1e1f22] rounded-t-2xl shadow-2xl transition-transform duration-300 ease-in-out ${isOpen ? 'translate-y-0' : 'translate-y-full'}`}
+                ref={sheetRef}
+                className={`fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#1e1f22] rounded-t-2xl shadow-2xl transition-transform duration-300 ease-in-out ${isOpen ? '' : 'translate-y-full'}`}
+                style={isOpen ? sheetStyle : {}}
                 role="dialog"
                 aria-modal="true"
             >
-                <div className="p-4">
-                    <div className="w-10 h-1.5 bg-neutral-300 dark:bg-gray-600 rounded-full mx-auto mb-4" />
+                <div ref={handleRef} className="py-4 cursor-grab active:cursor-grabbing">
+                    <div className="w-10 h-1.5 bg-neutral-300 dark:bg-gray-600 rounded-full mx-auto" />
+                </div>
+                <div className="px-4 pb-4">
                     <nav className="space-y-1">
                         <button onClick={() => handleLinkClick(onShowUsage)} className="w-full flex items-center gap-4 p-3 text-left text-base font-medium text-neutral-700 dark:text-gray-300 rounded-lg hover:bg-neutral-100 dark:hover:bg-gray-800/60 transition-colors">
                             <BarChart3 className="h-6 w-6 text-neutral-500 dark:text-gray-400" />
@@ -50,10 +55,6 @@ const MenuSheet: React.FC<MenuSheetProps> = ({
                         <button onClick={() => handleLinkClick(onShowMemory)} className="w-full flex items-center gap-4 p-3 text-left text-base font-medium text-neutral-700 dark:text-gray-300 rounded-lg hover:bg-neutral-100 dark:hover:bg-gray-800/60 transition-colors">
                             <BrainCircuit className="h-6 w-6 text-neutral-500 dark:text-gray-400" />
                             <span>Memory Management</span>
-                        </button>
-                        <button onClick={() => handleLinkClick(onShowGallery)} className="w-full flex items-center gap-4 p-3 text-left text-base font-medium text-neutral-700 dark:text-gray-300 rounded-lg hover:bg-neutral-100 dark:hover:bg-gray-800/60 transition-colors">
-                            <GalleryIcon className="h-6 w-6 text-neutral-500 dark:text-gray-400" />
-                            <span>Image Gallery</span>
                         </button>
                         {IS_DEV_CONSOLE_ENABLED && (
                             <>
